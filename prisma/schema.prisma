@@ -1,0 +1,852 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum WorkStatus {
+  OPEN
+  NEW
+  TRIAGED
+  APPROVED
+  REJECTED
+  PENDING_ASSIGNMENT
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  PENDING_SUPERVISOR_REVIEW
+  VERIFIED
+  REOPENED
+  CLOSED
+}
+
+enum AssetStatus {
+  ACTIVE
+  STANDBY
+  DOWN
+  RETIRED
+}
+
+enum RiskLevel {
+  LOW
+  MODERATE
+  HIGH
+  EXTREME
+}
+
+enum HousingBookingStatus {
+  REQUESTED
+  PENDING_APPROVAL
+  APPROVED
+  CHECKED_IN
+  CHECKED_OUT
+  REJECTED
+  CANCELLED
+  NO_SHOW
+  TRANSFERRED
+}
+
+enum HousingInspectionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  PASSED
+  FAILED
+  CLOSED
+}
+
+enum HousingApprovalStatus {
+  WAITING
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+  ESCALATED
+}
+
+enum HousingOccupancyStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED
+  MAINTENANCE
+  BLOCKED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String
+  email        String      @unique
+  phone        String?
+  role         String
+  department   String
+  supervisorEmail String?
+  notifyWorkOrder Boolean  @default(false)
+  notifyFacilityBooking Boolean @default(false)
+  active       Boolean     @default(true)
+  teamId       String?
+  passwordHash String
+  team         Team?       @relation(fields: [teamId], references: [id])
+  workOrders   WorkOrder[]
+  createdAt    DateTime    @default(now())
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  module      String
+  description String
+  roleLinks   RolePermission[]
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  standard    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  siteLocation String
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model Employee {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  companyId       String   @unique
+  nationalityType String
+  departmentCode  String
+  siteLocation    String
+  createdAt       DateTime @default(now())
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         String
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  type        String
+  supervisor  String
+  phone       String
+  email       String
+  shift       String
+  coverage    String
+  users       User[]
+  services    ServiceCatalog[]
+  createdAt   DateTime @default(now())
+}
+
+model ServiceCatalog {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  category    String
+  type        String
+  priority    Priority
+  slaHours    Int
+  teamId      String?
+  description String
+  active      Boolean  @default(true)
+  team        Team?    @relation(fields: [teamId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model AssetCategory {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  type           String
+  defaultLifeYrs Int
+  statutory      Boolean  @default(false)
+  description    String
+  createdAt      DateTime @default(now())
+}
+
+model Site {
+  id        String     @id @default(cuid())
+  name      String
+  city      String
+  country   String
+  type      String
+  areaSqm   Int
+  buildings Building[]
+  assets    Asset[]
+}
+
+model Building {
+  id        String  @id @default(cuid())
+  name      String
+  code      String  @unique
+  siteId    String
+  floors    Int
+  areaSqm   Int
+  site      Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  spaces    Space[]
+  assets    Asset[]
+}
+
+model Space {
+  id         String   @id @default(cuid())
+  name       String
+  floor      String
+  type       String
+  capacity   Int
+  areaSqm    Int
+  occupancy  Int
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+}
+
+model Asset {
+  id              String       @id @default(cuid())
+  tag             String       @unique
+  name            String
+  category        String
+  system          String
+  criticality     Priority
+  status          AssetStatus  @default(ACTIVE)
+  serialNumber    String?
+  siteCode        String?
+  zone            String?
+  buildingCode    String?
+  assetGroup      String?
+  assetDescription String?
+  additionalDescription String?
+  parentAsset     String?
+  departmentCode  String?
+  assignedTeamCode String?
+  assignedSupervisorEmail String?
+  remarks         String?
+  manufacturer    String
+  model           String
+  installDate     DateTime
+  replacementDate DateTime
+  warrantyExpiry  DateTime?
+  contractRef     String?
+  documentationUrl String?
+  purchaseCost    Decimal      @db.Decimal(12, 2)
+  salvageValue    Decimal      @default(0) @db.Decimal(12, 2)
+  depreciationRate Decimal     @default(10) @db.Decimal(5, 2)
+  conditionScore  Int
+  floor           String?
+  room            String?
+  qrCode          String?
+  siteId          String
+  buildingId      String?
+  site            Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  building        Building?    @relation(fields: [buildingId], references: [id])
+  workOrders      WorkOrder[]
+  meters          Meter[]
+  history         AssetHistory[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model AssetHistory {
+  id        String   @id @default(cuid())
+  assetId   String
+  eventType String
+  title     String
+  details   String
+  actor     String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ServiceRequest {
+  id          String     @id @default(cuid())
+  ticketNo    String     @unique
+  title       String
+  category    String
+  departmentCode String?
+  serviceCode String?
+  assignedTeamCode String?
+  assignedSupervisorEmail String?
+  requester   String
+  channel     String
+  priority    Priority
+  status      WorkStatus @default(NEW)
+  location    String
+  attachmentUrls String?
+  rejectionReason String?
+  reviewedAt  DateTime?
+  approvedAt  DateTime?
+  slaHours    Int
+  dueAt       DateTime
+  description String
+  workOrder   WorkOrder?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model WorkOrder {
+  id               String          @id @default(cuid())
+  woNo             String          @unique
+  title            String
+  type             String
+  assetType        String?
+  departmentCode   String?
+  serviceCode      String?
+  assignedTeamCode String?
+  jobPlanCode      String?
+  responseAt       DateTime?
+  resolutionAt     DateTime?
+  finishedAt       DateTime?
+  photoUrls        String?
+  assetsUsed       String?
+  inventoryUsed    String?
+  supervisorRequest String?
+  workNotes        String?
+  materialRequest  String?
+  rejectionReason  String?
+  supervisorDecision String?
+  verifiedAt       DateTime?
+  priority         Priority
+  status           WorkStatus      @default(NEW)
+  assetId          String?
+  requestId        String?         @unique
+  assignedToId     String?
+  plannedStart     DateTime
+  dueAt            DateTime
+  estimatedHours   Decimal         @db.Decimal(6, 2)
+  actualHours      Decimal?        @db.Decimal(6, 2)
+  cost             Decimal         @db.Decimal(12, 2)
+  jobPlan          String
+  safetyNotes      String
+  asset            Asset?          @relation(fields: [assetId], references: [id])
+  request          ServiceRequest? @relation(fields: [requestId], references: [id])
+  assignedTo       User?           @relation(fields: [assignedToId], references: [id])
+  inventoryIssues  InventoryIssue[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model Location {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  site         String
+  zone         String
+  building     String
+  floor        String
+  room         String
+  type         String
+  description  String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model JobPlan {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  assetType    String
+  departmentCode String?
+  serviceCode  String?
+  estimatedHours Decimal @db.Decimal(6, 2)
+  priority     Priority
+  steps        String
+  safetyNotes  String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model PreventiveMaintenance {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  assetTag     String
+  frequency    String
+  nextDue      DateTime
+  durationHrs  Decimal  @db.Decimal(6, 2)
+  checklist    String
+  active       Boolean  @default(true)
+}
+
+model InventoryItem {
+  id             String           @id @default(cuid())
+  sku            String           @unique
+  name           String
+  category       String
+  unit           String
+  onHand         Int
+  reorderPoint   Int
+  unitCost       Decimal          @db.Decimal(10, 2)
+  vendor         String
+  location       String
+  issues         InventoryIssue[]
+}
+
+model InventoryIssue {
+  id        String        @id @default(cuid())
+  itemId    String
+  workId    String
+  quantity  Int
+  item      InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  workOrder WorkOrder     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  issuedAt  DateTime      @default(now())
+}
+
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  category  String
+  rating    Decimal  @db.Decimal(3, 2)
+  contact   String
+  email     String
+  phone     String
+  contracts Contract[]
+}
+
+model Contract {
+  id          String   @id @default(cuid())
+  title       String
+  vendorId    String
+  type        String
+  startDate   DateTime
+  endDate     DateTime
+  value       Decimal  @db.Decimal(14, 2)
+  slaTarget   String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+model Inspection {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  title       String
+  area        String
+  inspector   String
+  risk        RiskLevel
+  score       Int
+  status      WorkStatus
+  dueAt       DateTime
+  findings    String
+}
+
+model ComplianceCertificate {
+  id              String   @id @default(cuid())
+  certificateNo   String   @unique
+  title           String
+  authority       String
+  category        String
+  assetTag        String?
+  location        String
+  owner           String
+  issueDate       DateTime
+  expiryDate      DateTime
+  status          String
+  risk            RiskLevel @default(LOW)
+  renewalLeadDays Int      @default(30)
+  evidenceUrl     String?
+  notes           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model HseIncident {
+  id          String    @id @default(cuid())
+  refNo       String    @unique
+  title       String
+  area        String
+  severity    RiskLevel
+  status      WorkStatus
+  reportedAt  DateTime  @default(now())
+  correctiveAction String
+}
+
+model Meter {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  unit      String
+  reading   Decimal  @db.Decimal(14, 2)
+  assetId   String?
+  asset     Asset?   @relation(fields: [assetId], references: [id])
+  readAt    DateTime @default(now())
+}
+
+model IotAlert {
+  id          String    @id @default(cuid())
+  source      String
+  assetTag    String
+  severity    Priority
+  message     String
+  status      WorkStatus
+  detectedAt  DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorName String
+  role      String
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model HousingProperty {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  name        String
+  site        String
+  city        String
+  manager     String
+  totalRooms  Int           @default(0)
+  active      Boolean       @default(true)
+  blocks      HousingBlock[]
+  rooms       HousingRoom[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model HousingBlock {
+  id          String          @id @default(cuid())
+  code        String          @unique
+  name        String
+  propertyId  String
+  floors      Int             @default(1)
+  property    HousingProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  rooms       HousingRoom[]
+  createdAt   DateTime        @default(now())
+}
+
+model HousingRoom {
+  id           String                 @id @default(cuid())
+  code         String                 @unique
+  roomNumber   String
+  propertyId   String
+  blockId      String?
+  floor        String
+  roomType     String
+  genderRestriction String             @default("MIXED")
+  capacity     Int
+  occupancy    Int                    @default(0)
+  status       HousingOccupancyStatus @default(AVAILABLE)
+  qrCode       String?
+  remarks      String?
+  property     HousingProperty        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  block        HousingBlock?          @relation(fields: [blockId], references: [id])
+  beds         HousingBed[]
+  bookings     HousingBooking[]
+  inspections  HousingInspection[]
+  assets       HousingAsset[]
+  inventories  HousingInventory[]
+  histories    HousingHistory[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+}
+
+model HousingBed {
+  id         String                 @id @default(cuid())
+  code       String                 @unique
+  label      String
+  roomId     String
+  status     HousingOccupancyStatus @default(AVAILABLE)
+  occupant   String?
+  occupantId String?
+  room       HousingRoom            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  bookings   HousingBooking[]
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+}
+
+model HousingResident {
+  id             String           @id @default(cuid())
+  residentNo     String           @unique
+  name           String
+  email          String?
+  phone          String?
+  companyId      String?
+  companyName    String?
+  gender         String?
+  nationality    String?
+  departmentCode String?
+  status         String           @default("ACTIVE")
+  bookings       HousingBooking[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model HousingBooking {
+  id             String               @id @default(cuid())
+  bookingNo      String               @unique
+  residentId     String?
+  residentName   String
+  departmentCode String?
+  employeeId     String?
+  companyName    String?
+  nationality    String?
+  contactNumber  String?
+  gender         String?
+  buildingNumber String?
+  floorNumber    String?
+  roomNumber     String?
+  bedNumber      String?
+  bookingType    String               @default("TEMPORARY")
+  allocationType String               @default("STANDARD")
+  roomId         String
+  bedId          String?
+  checkIn        DateTime
+  checkOut       DateTime?
+  status         HousingBookingStatus @default(REQUESTED)
+  priority       Priority             @default(MEDIUM)
+  requestedBy    String
+  approvedBy     String?
+  approvalLevel  String               @default("Supervisor")
+  attachmentUrls String?
+  notes          String?
+  keyHandoverBy  String?
+  keyHandoverAt  DateTime?
+  campIdNumber   String?
+  campIdIssuedAt DateTime?
+  cancellationReason String?
+  transferReason String?
+  blacklistReason String?
+  noShowAt       DateTime?
+  resident       HousingResident?     @relation(fields: [residentId], references: [id])
+  room           HousingRoom          @relation(fields: [roomId], references: [id])
+  bed            HousingBed?          @relation(fields: [bedId], references: [id])
+  approvals      HousingApproval[]
+  histories      HousingHistory[]
+  notifications  HousingNotification[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([roomId, status])
+  @@index([bedId, status])
+}
+
+model HousingInspection {
+  id             String                  @id @default(cuid())
+  inspectionNo   String                  @unique
+  roomId         String
+  bedId          String?
+  occupantId     String?
+  occupantName   String?
+  assetId        String?
+  workOrderRef   String?
+  inspector      String
+  inspectionType String
+  status         HousingInspectionStatus @default(SCHEDULED)
+  score          Int                     @default(100)
+  checklistJson  String?
+  furnitureCondition String?
+  mattressCondition String?
+  bedSheetCondition String?
+  tvCondition    String?
+  refrigeratorCondition String?
+  acCondition    String?
+  waterLeakageCheck String?
+  lightingCondition String?
+  curtainCondition String?
+  doorLockCondition String?
+  smokeDetectorCondition String?
+  fireExtinguisherAvailability String?
+  bathroomCleanliness String?
+  generalRoomCleanliness String?
+  missingAssetVerification String?
+  damageFound   Boolean                 @default(false)
+  damageReport  String?
+  missingAssetFound Boolean             @default(false)
+  missingAssetReport String?
+  repairRequired Boolean                @default(false)
+  estimatedRepairCost Decimal           @default(0)
+  occupantLiability String?
+  beforePhotoUrls String?
+  afterPhotoUrls String?
+  maintenanceTicketNo String?
+  findings       String?
+  photoUrls      String?
+  dueAt          DateTime
+  completedAt    DateTime?
+  room           HousingRoom             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  histories      HousingHistory[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+}
+
+model HousingAsset {
+  id             String   @id @default(cuid())
+  tag            String   @unique
+  name           String
+  category       String
+  description    String?
+  brand          String?
+  model          String?
+  purchaseDate   DateTime?
+  supplierName   String?
+  assetValue     Decimal  @default(0)
+  buildingLocation String?
+  roomLocation   String?
+  custodianName  String?
+  custodianContact String?
+  issuedTo       String?
+  issuedAt       DateTime?
+  transferredFrom String?
+  transferredTo  String?
+  transferredAt  DateTime?
+  replacementOf  String?
+  replacedAt     DateTime?
+  pmSchedule     String?
+  nextPmDue      DateTime?
+  depreciationRate Decimal @default(0)
+  currentValue   Decimal  @default(0)
+  lastInspectionAt DateTime?
+  roomId         String?
+  status         String   @default("ACTIVE")
+  serialNumber   String?
+  warrantyExpiry DateTime?
+  qrCode         String?
+  photoUrls      String?
+  room           HousingRoom? @relation(fields: [roomId], references: [id])
+  histories      HousingHistory[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model HousingInventory {
+  id                    String       @id @default(cuid())
+  sku                   String       @unique
+  name                  String
+  category              String
+  description           String?
+  roomId                String?
+  storeLocation         String?
+  onHand                Int          @default(0)
+  minimumStock          Int          @default(0)
+  reorderPoint          Int          @default(0)
+  unit                  String       @default("Each")
+  unitCost              Decimal      @default(0)
+  supplierName          String?
+  supplierContact       String?
+  preferredSupplier     String?
+  expiryDate            DateTime?
+  lastMovementType      String?
+  lastMovementQty       Int          @default(0)
+  lastMovementAt        DateTime?
+  lastMovementBy        String?
+  transferFrom          String?
+  transferTo            String?
+  adjustmentReason      String?
+  purchaseRequestNo     String?
+  purchaseRequestStatus String?
+  qrCode                String?
+  room                  HousingRoom? @relation(fields: [roomId], references: [id])
+  histories             HousingHistory[]
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([category])
+  @@index([expiryDate])
+  @@index([roomId, category])
+}
+
+model HousingApproval {
+  id          String                @id @default(cuid())
+  entity      String
+  entityId    String
+  bookingId   String?
+  level       String
+  step        Int                   @default(1)
+  approver    String
+  status      HousingApprovalStatus @default(PENDING)
+  action      String?
+  approverName String?
+  remarks     String?
+  actedAt     DateTime?
+  booking     HousingBooking?       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([bookingId, step])
+  @@index([status, level])
+}
+
+model HousingNotification {
+  id        String          @id @default(cuid())
+  alertType String?
+  channel   String          @default("SYSTEM")
+  role      String?
+  title     String
+  message   String
+  severity  Priority        @default(MEDIUM)
+  recipient String
+  status    String          @default("QUEUED")
+  read      Boolean         @default(false)
+  entity    String?
+  entityId  String?
+  queuedAt  DateTime        @default(now())
+  sentAt    DateTime?
+  deliveryRef String?
+  bookingId String?
+  booking   HousingBooking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+
+  @@index([alertType, createdAt])
+  @@index([status, channel])
+  @@index([entity, entityId])
+}
+
+model HousingNotificationSetting {
+  id          String   @id @default(cuid())
+  alertType   String   @unique
+  label       String
+  enabled     Boolean  @default(true)
+  roles       String   @default("Admin,Housing Supervisor")
+  channels    String   @default("SYSTEM")
+  leadDays    Int      @default(3)
+  thresholdDays Int    @default(0)
+  severity    Priority @default(MEDIUM)
+  description String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HousingHistory {
+  id           String             @id @default(cuid())
+  entity       String
+  entityId     String
+  roomId       String?
+  bookingId    String?
+  inspectionId String?
+  assetId      String?
+  inventoryId  String?
+  action       String
+  actor        String
+  details      String?
+  room         HousingRoom?       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  booking      HousingBooking?    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  inspection   HousingInspection? @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  asset        HousingAsset?      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  inventory    HousingInventory?  @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+}

@@ -1,0 +1,5797 @@
+"use client";
+
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import {
+  Activity,
+  AlertTriangle,
+  Boxes,
+  Building2,
+  CalendarCheck,
+  ClipboardCheck,
+  Gauge,
+  HardHat,
+  ChevronDown,
+  LayoutDashboard,
+  LogOut,
+  MapPinned,
+  PackagePlus,
+  Plus,
+  Upload,
+  Users,
+  RadioTower,
+  Search,
+  ShieldCheck,
+  Smartphone,
+  TicketCheck,
+  Wrench,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { assetHealth, chartData, moduleStats } from "@/lib/demo-data";
+
+type ConsoleData = {
+  live: boolean;
+  sites: any[];
+  assets: any[];
+  requests: any[];
+  workOrders: any[];
+  inventory: any[];
+  inspections: any[];
+  alerts: any[];
+  teams: any[];
+  services: any[];
+  categories: any[];
+  ppms: any[];
+  users: any[];
+  permissions: any[];
+  departments: any[];
+  employees: any[];
+  rolePermissions: any[];
+  locations: any[];
+  jobPlans: any[];
+  roles: any[];
+  auditLogs: any[];
+  complianceCertificates: any[];
+  housing: {
+    properties: any[];
+    blocks: any[];
+    rooms: any[];
+    beds: any[];
+    residents: any[];
+    bookings: any[];
+    inspections: any[];
+    assets: any[];
+    inventory: any[];
+    approvals: any[];
+    notifications: any[];
+    notificationSettings: any[];
+    history: any[];
+  };
+};
+
+type ActionPermissions = {
+  manageRequests: boolean;
+  approveRequests: boolean;
+  manageWork: boolean;
+  executeWork: boolean;
+  verifyWork: boolean;
+};
+
+const moduleGroups = [
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    items: [{ id: "command", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Tickets",
+    icon: TicketCheck,
+    items: [
+      { id: "helpdesk", label: "Service Requests", icon: TicketCheck },
+      { id: "work", label: "Work Orders", icon: Wrench },
+      { id: "jobPlans", label: "Job Plans", icon: ClipboardCheck },
+      { id: "ppm", label: "PPM Planner", icon: CalendarCheck },
+    ],
+  },
+  {
+    label: "Facility Bookings",
+    icon: MapPinned,
+    items: [
+      { id: "command", label: "Facility Report", icon: Gauge, view: "facility-report" },
+      { id: "locations", label: "Locations", icon: MapPinned, view: "locations" },
+      { id: "reports", label: "Bookings Report", icon: ClipboardCheck, view: "bookings-report" },
+    ],
+  },
+  {
+    label: "Housing Operations",
+    icon: Building2,
+    items: [
+      { id: "housing", label: "Housing Dashboard", icon: LayoutDashboard, view: "housing-dashboard" },
+      { id: "housing", label: "Accommodation & Bookings", icon: CalendarCheck, view: "housing-bookings" },
+      { id: "housing", label: "Room Inspections", icon: ClipboardCheck, view: "housing-inspections" },
+      { id: "housing", label: "Housing Assets", icon: Building2, view: "housing-assets" },
+      { id: "housing", label: "Housing Inventory", icon: Boxes, view: "housing-inventory" },
+      { id: "housing", label: "Approvals & Alerts", icon: ShieldCheck, view: "housing-approvals" },
+      { id: "housing", label: "Notification Settings", icon: AlertTriangle, view: "housing-notifications" },
+      { id: "housing", label: "Housing Reports", icon: Gauge, view: "housing-reports" },
+    ],
+  },
+  {
+    label: "Assets Management",
+    icon: Building2,
+    items: [
+      { id: "assets", label: "Assets Management", icon: Building2, view: "assets-register" },
+      { id: "bulk", label: "Bulk Upload Assets", icon: Upload, view: "bulk-assets" },
+      { id: "assets", label: "Asset Inventory Allocation", icon: ClipboardCheck, view: "asset-allocation" },
+    ],
+  },
+  {
+    label: "Inventory Management",
+    icon: Boxes,
+    items: [
+      { id: "inventory", label: "Inventory", icon: Boxes, view: "inventory-register" },
+      { id: "bulk", label: "Bulk Upload Inventory", icon: Upload, view: "bulk-inventory" },
+      { id: "reports", label: "Inventory Reports", icon: ClipboardCheck, view: "inventory-report" },
+    ],
+  },
+  {
+    label: "Safety",
+    icon: ShieldCheck,
+    items: [
+      { id: "hse", label: "HSE", icon: ShieldCheck },
+      { id: "iot", label: "IoT / BMS", icon: RadioTower },
+    ],
+  },
+  {
+    label: "Compliance & Certification",
+    icon: ShieldCheck,
+    items: [
+      { id: "compliance", label: "Compliance Dashboard", icon: Gauge, view: "compliance-dashboard" },
+      { id: "compliance", label: "Certification Register", icon: ClipboardCheck, view: "certification-register" },
+      { id: "compliance", label: "Audit Calendar", icon: CalendarCheck, view: "compliance-audits" },
+      { id: "compliance", label: "Expiry Alerts", icon: AlertTriangle, view: "compliance-alerts" },
+    ],
+  },
+  {
+    label: "Human Resources",
+    icon: Users,
+    items: [
+              { id: "hr", label: "Employees", icon: Users },
+              { id: "users", label: "Roles & Permissions", icon: ShieldCheck },
+    ],
+  },
+  {
+    label: "Services",
+    icon: ClipboardCheck,
+    items: [
+      { id: "teams", label: "Department Codes", icon: MapPinned, view: "departments" },
+      { id: "teams", label: "Create Team Code", icon: Users, view: "team-code" },
+      { id: "teams", label: "Service Teams", icon: Users, view: "service-teams" },
+      { id: "teams", label: "Services Catalog", icon: ClipboardCheck, view: "services-catalog" },
+      { id: "bulk", label: "Bulk Upload Services", icon: Upload, view: "bulk-services" },
+    ],
+  },
+  {
+    label: "Users Management",
+    icon: Users,
+    items: [
+      { id: "users", label: "Users Management", icon: Users, view: "users-management" },
+      { id: "users", label: "Permissions", icon: ShieldCheck, view: "permissions" },
+    ],
+  },
+  {
+    label: "Utilities",
+    icon: Upload,
+    items: [
+      { id: "bulk", label: "Bulk Upload Center", icon: Upload, view: "bulk-center" },
+      { id: "templates", label: "Bulk Upload Templates", icon: ClipboardCheck, view: "templates" },
+      { id: "reports", label: "CSV / Excel / PDF Reports", icon: ClipboardCheck, view: "reports-export" },
+    ],
+  },
+  {
+    label: "Activity Logs",
+    icon: Activity,
+    items: [
+      { id: "audit", label: "Audit Logs", icon: Activity },
+      { id: "reports", label: "Reports Preview", icon: ClipboardCheck },
+    ],
+  },
+];
+
+const healthColors = ["#35a852", "#0f8b8d", "#ffd166", "#f45d48"];
+const PAGE_SIZE = 100;
+const HOUSING_FIELD_CLASS = "h-11 rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-lagoon";
+const modulePermissions: Record<string, string> = {
+  assets: "assets.manage",
+  work: "work.execute",
+  helpdesk: "requests.view",
+  ppm: "ppm.manage",
+  users: "users.manage",
+  reports: "reports.view",
+  bulk: "assets.manage",
+  templates: "assets.manage",
+  teams: "requests.manage",
+  jobPlans: "work.manage",
+  locations: "requests.manage",
+  inventory: "assets.manage",
+  hse: "reports.view",
+  iot: "reports.view",
+  hr: "users.manage",
+  audit: "reports.view",
+  housing: "housing.view",
+  compliance: "compliance.view",
+};
+const statToneClasses: Record<string, string> = {
+  coral: "text-coral",
+  leaf: "text-leaf",
+  lagoon: "text-lagoon",
+  sun: "text-amber-600",
+};
+
+function cleanMessage(message: string) {
+  return message
+    .replaceAll("\n", " ")
+    .replaceAll("{", "")
+    .replaceAll("}", "")
+    .replaceAll('"', "")
+    .slice(0, 260);
+}
+
+function bulkModuleFromView(view: string) {
+  const map: Record<string, string> = {
+    "bulk-assets": "assets",
+    "bulk-inventory": "inventory",
+    "bulk-services": "services",
+  };
+  return map[view] ?? "assets";
+}
+
+function displayValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function minutesBetween(start?: unknown, end?: unknown) {
+  if (!start || !end) return "-";
+  const startTime = new Date(String(start)).getTime();
+  const endTime = new Date(String(end)).getTime();
+  if (Number.isNaN(startTime) || Number.isNaN(endTime)) return "-";
+  const minutes = Math.max(0, Math.round((endTime - startTime) / 60000));
+  return `${minutes} min`;
+}
+
+function workTimingRows(work: any): [string, unknown][] {
+  return [
+    ["Response Time", work.responseAt],
+    ["Resolution Time", work.resolutionAt],
+    ["Finish Time", work.finishedAt],
+    ["Response to Resolution", minutesBetween(work.responseAt, work.resolutionAt)],
+    ["Resolution to Finish", minutesBetween(work.resolutionAt, work.finishedAt)],
+    ["Total Response to Finish", minutesBetween(work.responseAt, work.finishedAt)],
+  ];
+}
+
+function localWorkMetric(work: any) {
+  return {
+    response: minutesBetween(work.createdAt, work.responseAt),
+    resolution: minutesBetween(work.responseAt, work.resolutionAt),
+    finish: minutesBetween(work.resolutionAt, work.finishedAt),
+    total: minutesBetween(work.responseAt, work.finishedAt),
+  };
+}
+
+function workMetricRows(workOrders: any[], showOnlyDelayed: boolean) {
+  return workOrders
+    .map((work) => {
+      const timing = localWorkMetric(work);
+      const delayed = timing.response === "-" || timing.resolution === "-" || timing.finish === "-";
+      return {
+        ...work,
+        assetTag: work.asset?.tag ?? work.assetTag ?? "",
+        responseMetric: timing.response,
+        resolutionMetric: timing.resolution,
+        finishMetric: timing.finish,
+        totalMetric: timing.total,
+        delayed,
+      };
+    })
+    .filter((work) => !showOnlyDelayed || work.delayed || work.status !== "CLOSED");
+}
+
+function DetailPanel({ title, rows }: { title: string; rows: [string, unknown][] }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h4 className="text-base font-black text-ink">{title}</h4>
+      <div className="mt-3 grid gap-2">
+        {rows.map(([label, value]) => (
+          <div key={label} className="grid grid-cols-[140px_1fr] gap-3 rounded-lg bg-slate-50 p-2 text-sm">
+            <span className="font-black text-slate-500">{label}</span>
+            <span className="min-w-0 break-words font-bold text-slate-800">{displayValue(value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function dashboardSubtitle(role: string, department?: string | null) {
+  const lower = role.toLowerCase();
+  if (lower === "admin" || lower.includes("super admin")) {
+    return "Admin dashboard: full visibility for service requests, work orders, PPM, users, roles, reports and analytics.";
+  }
+  if (lower.includes("supervisor")) {
+    return `Supervisor dashboard: department-specific requests, work orders and PPM for ${department || "your department"}.`;
+  }
+  if (lower.includes("technician") || lower.includes("service team")) {
+    return "Technician dashboard: assigned work orders, assigned requests and assigned PPM task execution.";
+  }
+  if (lower.includes("read") || lower.includes("viewer") || lower.includes("view only")) {
+    return "Read-only dashboard: view assets, work orders and history without editing records.";
+  }
+  return "Requester dashboard: create and track your service requests.";
+}
+
+function roleKindLabel(role: string) {
+  const lower = role.toLowerCase();
+  if (lower === "admin" || lower.includes("super admin")) return "admin";
+  if (lower.includes("supervisor")) return "supervisor";
+  if (lower.includes("technician") || lower.includes("service team")) return "technician";
+  if (lower.includes("read") || lower.includes("viewer") || lower.includes("view only")) return "readonly";
+  return "requester";
+}
+
+export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: string; name: string; email: string; role: string; department?: string | null; team?: { code: string; name?: string } | null } }) {
+  const [records, setRecords] = useState(data);
+  const [active, setActive] = useState("command");
+  const [activeView, setActiveView] = useState("dashboard");
+  const [activeMenuKey, setActiveMenuKey] = useState("Dashboard-Dashboard");
+  const [query, setQuery] = useState("");
+  const [toast, setToast] = useState("");
+  const [health, setHealth] = useState<{ app: string; database: string; message?: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkHealth();
+  }, []);
+
+  const filteredAssets = useMemo(() => {
+    return records.assets.filter((asset) => `${asset.tag} ${asset.name} ${asset.category} ${asset.assetDescription} ${asset.assetGroup} ${asset.siteCode} ${asset.buildingCode} ${asset.floor} ${asset.room} ${asset.assignedTeamCode} ${asset.assignedSupervisorEmail}`.toLowerCase().includes(query.toLowerCase()));
+  }, [records.assets, query]);
+  const permissionCodes = useMemo(() => {
+    return new Set(records.rolePermissions.filter((item) => item.role === user.role).map((item) => item.permission.code));
+  }, [records.rolePermissions, user.role]);
+  const isReadOnlyUser = roleKindLabel(user.role) === "readonly";
+  const readOnlyModules = new Set(["command", "dashboard", "assets", "work", "ppm", "requests", "reports", "housing", "compliance"]);
+  const can = (permission?: string) => user.role === "Admin" || !permission || (!isReadOnlyUser && permissionCodes.has(permission));
+  const canOpenModule = (moduleId: string) => (isReadOnlyUser && readOnlyModules.has(moduleId)) || can(modulePermissions[moduleId]);
+  const canViewActive = canOpenModule(active);
+  const actionPermissions = {
+    manageRequests: can("requests.manage"),
+    approveRequests: can("requests.approve"),
+    manageWork: can("work.manage"),
+    executeWork: can("work.execute"),
+    verifyWork: can("work.verify"),
+  };
+
+  function navigate(moduleId: string, menuKey: string, view = moduleId) {
+    if (!canOpenModule(moduleId)) {
+      setToast("You do not have permission to access this module.");
+      return;
+    }
+    setActive(moduleId);
+    setActiveView(view);
+    setActiveMenuKey(menuKey);
+  }
+
+  async function checkHealth() {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    const result = await response.json();
+    setHealth(result);
+  }
+
+  async function refreshData() {
+    const response = await fetch("/api/operating-data", { cache: "no-store" });
+    if (response.ok) {
+      setRecords(await response.json());
+    }
+    await checkHealth();
+  }
+
+  async function submitRequest(formData: FormData) {
+    setSaving(true);
+    const payload = Object.fromEntries(formData.entries());
+    const response = await fetch("/api/service-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    setToast(response.ok ? `Service request ${result.ticketNo} created and saved.` : cleanMessage(result.message ?? "Service request failed."));
+    if (response.ok) await refreshData();
+    setSaving(false);
+  }
+
+  async function submitWorkOrder(formData: FormData) {
+    setSaving(true);
+    const payload = Object.fromEntries(formData.entries());
+    const response = await fetch("/api/work-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    setToast(response.ok ? `Work order ${result.woNo} created and saved.` : cleanMessage(result.message ?? "Work order failed."));
+    if (response.ok) await refreshData();
+    setSaving(false);
+  }
+
+  async function postRecord(path: string, formData: FormData, successLabel: string) {
+    setSaving(true);
+    const payload = Object.fromEntries(formData.entries());
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    setToast(response.ok ? `${successLabel} saved.` : cleanMessage(result.message ?? "Action failed."));
+    if (response.ok) await refreshData();
+    setSaving(false);
+  }
+
+  async function bulkUpload(formData: FormData) {
+    setSaving(true);
+    const response = await fetch("/api/bulk-upload", {
+      method: "POST",
+      body: formData,
+    });
+    const result = await response.json();
+    setToast(cleanMessage(result.message ?? (response.ok ? "Bulk upload complete." : "Bulk upload failed.")));
+    await refreshData();
+    setSaving(false);
+  }
+
+  async function patchRecord(path: string, body: Record<string, unknown>, successLabel: string) {
+    setSaving(true);
+    const response = await fetch(path, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    setToast(response.ok ? successLabel : cleanMessage(result.message ?? "Action failed."));
+    if (response.ok) await refreshData();
+    setSaving(false);
+  }
+
+  async function updateAsset(id: string, formData: FormData) {
+    await patchRecord(`/api/assets/${id}`, Object.fromEntries(formData.entries()) as Record<string, string>, "Asset updated by admin.");
+  }
+
+  async function deleteRecord(path: string, successLabel: string) {
+    setSaving(true);
+    const response = await fetch(path, { method: "DELETE" });
+    const result = await response.json();
+    setToast(response.ok ? successLabel : cleanMessage(result.message ?? "Delete failed."));
+    if (response.ok) await refreshData();
+    setSaving(false);
+  }
+
+  async function convertRequestToWorkOrder(id: string, assignment: { assignedTeamCode?: string; assignedToEmail?: string; assetTag?: string } = {}) {
+    setSaving(true);
+    const response = await fetch(`/api/service-requests/${id}/convert-work-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(assignment),
+    });
+    const result = await response.json();
+    setToast(response.ok ? `Work order ${result.woNo} created from request.` : cleanMessage(result.message ?? "Conversion failed."));
+    if (response.ok) await refreshData();
+    setSaving(false);
+  }
+
+  async function logout() {
+    await fetch("/api/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
+
+  return (
+    <main className="h-screen overflow-hidden text-ink">
+      <section className="grid h-screen min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)] lg:grid-rows-1">
+        <aside className="max-h-[38vh] shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4 scrollbar-thin lg:h-screen lg:max-h-none">
+          <div className="flex items-center gap-3 px-1">
+            <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-lg border border-amber-200 bg-white p-1 shadow-sm">
+              <Image src="/tafga.png" alt="Tamimi Global CAFM logo" width={52} height={52} className="h-full w-full object-contain" priority />
+            </div>
+            <div>
+              <h1 className="text-lg font-black leading-tight">Tamimi Global CAFM</h1>
+              <p className="text-xs text-slate-500">Enterprise facility command</p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm">
+            <div className="flex items-center gap-2 font-bold text-emerald-700">
+              <Activity size={16} />
+              {health?.database === "connected" || records.live ? "Database online" : "Database issue"}
+            </div>
+            <p className="mt-1 text-emerald-900/70">
+              {health ? `Status: ${health.database}` : "Checking database..."}
+            </p>
+            {health?.message && <p className="mt-1 break-words text-xs text-coral">{health.message}</p>}
+            <button onClick={checkHealth} className="mt-3 h-9 rounded-lg bg-white px-3 text-xs font-black text-lagoon shadow-sm">
+              Check DB
+            </button>
+          </div>
+
+          <nav className="mt-5 grid gap-1">
+            {moduleGroups.map((group) => {
+              const visibleItems = group.items.filter((item) => canOpenModule(item.id));
+              if (!visibleItems.length) return null;
+
+              return (
+                <details key={group.label} open={visibleItems.some((item) => `${group.label}-${item.label}` === activeMenuKey)} className="group">
+                  <summary className="flex h-11 cursor-pointer list-none items-center justify-between rounded-lg px-3 text-sm font-black text-slate-700 hover:bg-slate-50">
+                    <span className="flex items-center gap-3">
+                      <group.icon size={18} className="text-slate-600" />
+                      {group.label}
+                    </span>
+                    <ChevronDown size={15} className="text-slate-400 transition group-open:rotate-180" />
+                  </summary>
+                  <div className="ml-4 mt-1 grid border-l border-slate-100 pl-3">
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      const menuKey = `${group.label}-${item.label}`;
+                      return (
+                        <button
+                          key={menuKey}
+                          onClick={() => navigate(item.id, menuKey, String("view" in item ? item.view : item.id))}
+                          className={`flex h-9 items-center gap-2 rounded-lg px-2 text-left text-sm transition ${
+                            activeMenuKey === menuKey ? "bg-indigo-50 font-black text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-ink"
+                          }`}
+                        >
+                          <Icon size={13} />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </details>
+              );
+            })}
+          </nav>
+
+          <div className="mt-5 rounded-lg bg-slate-50 p-3">
+            <p className="text-sm font-black">{user.name}</p>
+            <p className="mt-1 text-xs text-slate-700">{user.role} / {user.department || "All departments"} / {user.email}</p>
+            <button onClick={logout} className="mt-3 flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-xs font-black text-coral shadow-sm">
+              <LogOut size={14} />
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        <section className="min-h-0 min-w-0 space-y-5 overflow-auto p-3 scrollbar-thin sm:p-5 lg:h-screen lg:p-6">
+          <header className="min-w-0 rounded-lg bg-gradient-to-r from-fuchsia-600 to-indigo-600 p-4 text-white shadow-lift sm:p-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-black uppercase tracking-wider text-white/80">International level CAFM suite</p>
+                <h2 className="mt-1 text-2xl font-black sm:text-3xl xl:text-4xl">One-stop facility operations system</h2>
+                <p className="mt-2 max-w-3xl text-white/80">
+                  {dashboardSubtitle(user.role, user.department)}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => navigate("work", "Tickets-Work Orders")} className="flex h-11 items-center gap-2 rounded-lg bg-coral px-4 font-black text-white shadow-lg">
+                  <Plus size={18} />
+                  New Work
+                </button>
+                <button onClick={() => navigate("helpdesk", "Tickets-Service Requests")} className="flex h-11 items-center gap-2 rounded-lg bg-lagoon px-4 font-black text-white shadow-lg">
+                  <Smartphone size={18} />
+                  Dispatch
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {toast && <div className="rounded-lg border border-lagoon/20 bg-white p-3 font-bold text-lagoon shadow-lift">{toast}</div>}
+
+          <section className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {moduleStats.map((stat) => (
+              <div key={stat.label} className="min-w-0 rounded-lg border border-white/80 bg-white p-4 shadow-lift">
+                <p className="text-sm font-bold text-slate-500">{stat.label}</p>
+                <p className="mt-2 text-3xl font-black">{stat.value}</p>
+                <p className={`mt-1 text-sm font-bold ${statToneClasses[stat.tone]}`}>{stat.delta}</p>
+              </div>
+            ))}
+          </section>
+
+          {!canViewActive && <AccessDenied moduleId={active} />}
+          {canViewActive && active === "command" && <CommandCenter data={records} />}
+          {canViewActive && active === "assets" && (
+            <Assets
+              assets={filteredAssets}
+              selectedAssetId={selectedAssetId}
+              setSelectedAssetId={setSelectedAssetId}
+              query={query}
+              setQuery={setQuery}
+              saving={saving}
+              submitAsset={(formData) => postRecord("/api/assets", formData, "Asset")}
+              updateAsset={updateAsset}
+              submitWorkOrder={submitWorkOrder}
+              data={records}
+              teams={records.teams}
+              users={records.users}
+              locations={records.locations}
+              canManageAssets={can("assets.manage")}
+            />
+          )}
+          {canViewActive && active === "work" && (
+            <WorkOrders
+              data={records}
+              submitWorkOrder={submitWorkOrder}
+              saving={saving}
+              permissions={actionPermissions}
+              role={user.role}
+              updateWorkOrder={(id, formData) => patchRecord(`/api/work-orders/${id}`, Object.fromEntries(formData.entries()) as Record<string, string>, "Work order updated by admin.")}
+              updateWorkStatus={(id, status) => patchRecord(`/api/work-orders/${id}`, { status }, `Work order marked ${status}.`)}
+              deleteWorkOrder={(id) => deleteRecord(`/api/work-orders/${id}`, "Work order deleted.")}
+            />
+          )}
+          {canViewActive && active === "helpdesk" && (
+            <Helpdesk
+              requests={records.requests}
+              assets={records.assets}
+              services={records.services}
+              assetCategories={records.categories}
+              departments={records.departments}
+              teams={records.teams}
+              locations={records.locations}
+              submitRequest={submitRequest}
+              permissions={actionPermissions}
+              role={user.role}
+              updateRequest={(id, formData) => patchRecord(`/api/service-requests/${id}`, Object.fromEntries(formData.entries()) as Record<string, string>, "Service request updated by admin.")}
+              deleteRequest={(id) => deleteRecord(`/api/service-requests/${id}`, "Service request deleted.")}
+              convertRequest={convertRequestToWorkOrder}
+              saving={saving}
+            />
+          )}
+          {canViewActive && active === "jobPlans" && <JobPlans jobPlans={records.jobPlans} services={records.services} departments={records.departments} saving={saving} submitJobPlan={(formData) => postRecord("/api/job-plans", formData, "Job plan")} />}
+          {canViewActive && active === "locations" && <Locations locations={records.locations} saving={saving} submitLocation={(formData) => postRecord("/api/locations", formData, "Location")} />}
+          {canViewActive && active === "ppm" && <Ppm ppms={records.ppms} assets={records.assets} workOrders={records.workOrders} saving={saving} submitPpm={(formData) => postRecord("/api/ppm", formData, "PPM")} updatePpm={(body) => patchRecord("/api/ppm", body, "PPM updated.")} />}
+          {canViewActive && active === "inventory" && <Inventory inventory={records.inventory} saving={saving} submitInventory={(formData) => postRecord("/api/inventory", formData, "Inventory item")} />}
+          {canViewActive && active === "hse" && <Hse inspections={records.inspections} saving={saving} submitInspection={(formData) => postRecord("/api/inspections", formData, "Inspection")} />}
+          {canViewActive && active === "compliance" && <ComplianceCertification records={records.complianceCertificates ?? []} view={activeView} saving={saving} submitCertificate={(formData) => postRecord("/api/compliance", formData, "Compliance certificate")} />}
+          {canViewActive && active === "iot" && <Iot alerts={records.alerts} saving={saving} acknowledgeAlert={(id) => patchRecord(`/api/iot-alerts/${id}`, {}, "IoT alert acknowledged.")} />}
+          {canViewActive && active === "teams" && (
+            <TeamsServices
+              teams={records.teams}
+              services={records.services}
+              categories={records.categories}
+              departments={records.departments}
+              saving={saving}
+              submitTeam={(formData) => postRecord("/api/teams", formData, "Team")}
+              submitService={(formData) => postRecord("/api/services", formData, "Service")}
+              submitCategory={(formData) => postRecord("/api/asset-categories", formData, "Asset category")}
+              submitDepartment={(formData) => postRecord("/api/departments", formData, "Department")}
+              updateTeam={(id, formData) => patchRecord(`/api/teams/${id}`, Object.fromEntries(formData.entries()) as Record<string, string>, "Team updated.")}
+              updateService={(id, formData) => patchRecord(`/api/services/${id}`, Object.fromEntries(formData.entries()) as Record<string, string>, "Service updated.")}
+              updateDepartment={(id, formData) => patchRecord(`/api/departments/${id}`, Object.fromEntries(formData.entries()) as Record<string, string>, "Department updated.")}
+              deleteTeam={(id) => deleteRecord(`/api/teams/${id}`, "Team deleted.")}
+              deleteService={(id) => deleteRecord(`/api/services/${id}`, "Service deleted.")}
+              deleteDepartment={(id) => deleteRecord(`/api/departments/${id}`, "Department deleted.")}
+              view={activeView}
+            />
+          )}
+          {canViewActive && active === "bulk" && <BulkUpload saving={saving} onSubmit={bulkUpload} initialModule={bulkModuleFromView(activeView)} />}
+          {canViewActive && active === "templates" && <Templates />}
+          {canViewActive && active === "users" && (
+            <UsersRoles
+              users={records.users}
+              teams={records.teams}
+              departments={records.departments}
+              roles={records.roles}
+              permissions={records.permissions}
+              rolePermissions={records.rolePermissions}
+              saving={saving}
+              submitUser={(formData) => postRecord("/api/users", formData, "User")}
+              submitRole={(formData) => postRecord("/api/roles", formData, "Custom role")}
+              updateUser={(id, formData) => patchRecord(`/api/users/${id}`, Object.fromEntries(formData.entries()) as Record<string, string>, "User updated.")}
+              deleteUser={(id) => deleteRecord(`/api/users/${id}`, "User deleted.")}
+              refreshData={refreshData}
+              setToast={(message) => setToast(cleanMessage(message))}
+              saveRolePermissions={async (role, permissionCodes) => {
+                setSaving(true);
+                const response = await fetch("/api/role-permissions", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ role, permissionCodes }),
+                });
+                const result = await response.json();
+                setToast(response.ok ? "Role permissions updated." : cleanMessage(result.message ?? "Permission update failed."));
+                await refreshData();
+                setSaving(false);
+              }}
+            />
+          )}
+          {canViewActive && active === "reports" && <Reports />}
+          {canViewActive && active === "audit" && <AuditLogs logs={records.auditLogs ?? []} />}
+          {canViewActive && active === "hr" && <HumanResources employees={records.employees} departments={records.departments} saving={saving} submitEmployee={(formData) => postRecord("/api/employees", formData, "Employee")} />}
+          {canViewActive && active === "housing" && (
+            <HousingOperations
+              housing={records.housing}
+              view={activeView}
+              saving={saving}
+              canManage={can("housing.manage")}
+              canApprove={can("housing.approve")}
+              userRole={user.role}
+              submitHousing={(formData) => postRecord("/api/housing", formData, "Housing record")}
+              updateHousing={(type, id, body) => patchRecord(`/api/housing/${type}/${id}`, body, "Housing record updated.")}
+              deleteHousing={(type, id) => deleteRecord(`/api/housing/${type}/${id}`, "Housing record deleted.")}
+              refreshData={refreshData}
+            />
+          )}
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function CommandCenter({ data }: { data: ConsoleData }) {
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
+      <Panel title="Operational Throughput" icon={Gauge}>
+        <div className="h-80">
+          <ResponsiveContainer>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="ppm" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#0f8b8d" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="#0f8b8d" stopOpacity={0.04} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#d9e6ee" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Area type="monotone" dataKey="ppm" stroke="#0f8b8d" fill="url(#ppm)" strokeWidth={3} />
+              <Area type="monotone" dataKey="reactive" stroke="#f45d48" fill="#f45d4822" strokeWidth={3} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Panel>
+      <Panel title="Asset Health" icon={Activity}>
+        <div className="h-80">
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie data={assetHealth} dataKey="value" innerRadius={65} outerRadius={105} paddingAngle={5}>
+                {assetHealth.map((entry, index) => (
+                  <Cell key={entry.name} fill={healthColors[index]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {assetHealth.map((item, index) => (
+            <div key={item.name} className="rounded-lg bg-slate-50 p-2 text-sm font-bold">
+              <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: healthColors[index] }} />
+              {item.name}: {item.value}%
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Priority Work Queue" icon={HardHat}>
+        <DataTable
+          rows={data.workOrders}
+          columns={[
+            ["woNo", "WO"],
+            ["title", "Job"],
+            ["priority", "Priority"],
+            ["status", "Status"],
+            ["dueAt", "Due"],
+          ]}
+        />
+      </Panel>
+      <Panel title="Portfolio Sites" icon={MapPinned}>
+        <DataTable
+          rows={data.sites}
+          columns={[
+            ["name", "Site"],
+            ["city", "City"],
+            ["type", "Type"],
+            ["areaSqm", "Area sqm"],
+          ]}
+        />
+      </Panel>
+    </section>
+  );
+}
+
+function AccessDenied({ moduleId }: { moduleId: string }) {
+  return (
+    <Panel title="Access Restricted" icon={ShieldCheck}>
+      <p className="text-sm font-bold text-slate-600">
+        Your role does not have permission for {moduleId}. Update this role in Users Management / Permissions to allow access.
+      </p>
+    </Panel>
+  );
+}
+
+function ReportButtons({ type, label = "Report" }: { type: string; label?: string }) {
+  const href = (format: string) => `/api/reports?type=${encodeURIComponent(type)}&format=${format}`;
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+      <span className="rounded-lg bg-white px-3 py-2 text-xs font-black uppercase text-slate-500 shadow-sm">{label}</span>
+      <a className="rounded-lg bg-white px-3 py-2 text-xs font-black text-ink shadow-sm hover:text-lagoon" href={href("html")} target="_blank" rel="noreferrer">Preview</a>
+      <a className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white shadow-sm" href={href("csv")}>CSV</a>
+      <a className="rounded-lg bg-leaf px-3 py-2 text-xs font-black text-white shadow-sm" href={href("excel")}>Excel</a>
+      <a className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white shadow-sm" href={href("pdf")}>PDF</a>
+    </div>
+  );
+}
+
+function Assets({
+  assets,
+  selectedAssetId,
+  setSelectedAssetId,
+  query,
+  setQuery,
+  submitAsset,
+  updateAsset,
+  submitWorkOrder,
+  data,
+  teams,
+  users,
+  locations,
+  canManageAssets,
+  saving,
+}: {
+  assets: any[];
+  selectedAssetId: string | null;
+  setSelectedAssetId: (id: string) => void;
+  query: string;
+  setQuery: (value: string) => void;
+  submitAsset: (formData: FormData) => void;
+  updateAsset: (id: string, formData: FormData) => void;
+  submitWorkOrder: (formData: FormData) => void;
+  data: ConsoleData;
+  teams: any[];
+  users: any[];
+  locations: any[];
+  canManageAssets: boolean;
+  saving: boolean;
+}) {
+  const [previewAsset, setPreviewAsset] = useState<any | null>(null);
+  const [assetWorkOrderDraft, setAssetWorkOrderDraft] = useState<any | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterField, setFilterField] = useState("name");
+  const [filterValue, setFilterValue] = useState("");
+  const [siteFilter, setSiteFilter] = useState("");
+  const [buildingFilter, setBuildingFilter] = useState("");
+  const [floorFilter, setFloorFilter] = useState("");
+  const [roomFilter, setRoomFilter] = useState("");
+  const filtered = assets.filter((asset) => {
+    const text = String(asset[filterField] ?? asset.assetDescription ?? asset.name ?? "").toLowerCase();
+    const textMatch = !filterValue || text.includes(filterValue.toLowerCase());
+    const siteMatch = !siteFilter || asset.siteCode === siteFilter || asset.site?.name === siteFilter;
+    const buildingMatch = !buildingFilter || asset.buildingCode === buildingFilter || asset.building?.code === buildingFilter || asset.building?.name === buildingFilter;
+    const floorMatch = !floorFilter || asset.floor === floorFilter;
+    const roomMatch = !roomFilter || asset.room === roomFilter;
+    return textMatch && siteMatch && buildingMatch && floorMatch && roomMatch;
+  });
+  const selectedAsset = assets.find((asset) => asset.id === selectedAssetId) ?? assets[0];
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleAssets = filtered.slice(startIndex, startIndex + PAGE_SIZE);
+  const filterOptions = [
+    ["name", "Name"],
+    ["assetGroup", "Asset Type"],
+    ["room", "Location"],
+    ["manufacturer", "Manufacturer"],
+    ["model", "Model"],
+    ["additionalDescription", "Description"],
+    ["status", "Status"],
+    ["parentAsset", "Parent Asset"],
+    ["qrCode", "QR Code"],
+    ["serialNumber", "Serial No."],
+  ];
+  const siteOptions = Array.from(new Set([...assets.map((asset) => asset.siteCode || asset.site?.name).filter(Boolean), ...locations.map((location) => location.site).filter(Boolean)]));
+  const buildingOptions = Array.from(new Set([...assets.filter((asset) => !siteFilter || asset.siteCode === siteFilter || asset.site?.name === siteFilter).map((asset) => asset.buildingCode || asset.building?.code || asset.building?.name).filter(Boolean), ...locations.filter((location) => !siteFilter || location.site === siteFilter).map((location) => location.building).filter(Boolean)]));
+  const floorOptions = Array.from(new Set([...assets.filter((asset) => (!siteFilter || asset.siteCode === siteFilter || asset.site?.name === siteFilter) && (!buildingFilter || asset.buildingCode === buildingFilter || asset.building?.code === buildingFilter || asset.building?.name === buildingFilter)).map((asset) => asset.floor).filter(Boolean), ...locations.filter((location) => (!siteFilter || location.site === siteFilter) && (!buildingFilter || location.building === buildingFilter)).map((location) => location.floor).filter(Boolean)]));
+  const roomOptions = Array.from(new Set([...assets.filter((asset) => (!siteFilter || asset.siteCode === siteFilter || asset.site?.name === siteFilter) && (!buildingFilter || asset.buildingCode === buildingFilter || asset.building?.code === buildingFilter || asset.building?.name === buildingFilter) && (!floorFilter || asset.floor === floorFilter)).map((asset) => asset.room).filter(Boolean), ...locations.filter((location) => (!siteFilter || location.site === siteFilter) && (!buildingFilter || location.building === buildingFilter) && (!floorFilter || location.floor === floorFilter)).map((location) => location.room).filter(Boolean)]));
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, assets.length, filterField, filterValue, siteFilter, buildingFilter, floorFilter, roomFilter]);
+
+  return (
+    <section className="grid gap-5">
+      <Panel title="Assets" icon={Building2}>
+        <ReportButtons type="assets" label="Assets report" />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <button type="button" onClick={() => setFilterOpen((current) => !current)} className="rounded-lg bg-lagoon px-4 py-3 text-sm font-black text-white">Filters</button>
+          <div className="flex min-w-[280px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 lg:max-w-md">
+            <Search size={18} className="text-slate-400" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Assets" className="h-11 w-full outline-none" />
+          </div>
+          {canManageAssets && <button type="button" onClick={() => setCreateOpen(true)} className="flex h-11 items-center gap-2 rounded-lg bg-lagoon px-4 text-sm font-black text-white"><Plus size={16} /> Asset</button>}
+        </div>
+        {filterOpen && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-lift">
+            <p className="text-sm font-black">Filters</p>
+            <p className="mt-3 text-sm font-bold text-slate-500">In this view, show assets</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr_auto_auto]">
+              <select value={filterField} onChange={(event) => setFilterField(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+                {filterOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+              <input value={filterValue} onChange={(event) => setFilterValue(event.target.value)} placeholder="Pick up a property to filter" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+              <button type="button" onClick={() => { setFilterValue(""); setFilterOpen(false); }} className="rounded-lg border border-slate-200 px-4 text-sm font-black text-slate-600">Cancel</button>
+              <button type="button" onClick={() => setFilterOpen(false)} className="rounded-lg bg-lagoon px-4 text-sm font-black text-white">Apply</button>
+            </div>
+          </div>
+        )}
+        <div className="mb-4 grid gap-3 rounded-lg bg-slate-50 p-3 md:grid-cols-5">
+          <select value={siteFilter} onChange={(event) => { setSiteFilter(event.target.value); setBuildingFilter(""); setFloorFilter(""); setRoomFilter(""); }} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="">Site</option>
+            {siteOptions.map((site) => <option key={site} value={site}>{site}</option>)}
+          </select>
+          <select value={buildingFilter} onChange={(event) => { setBuildingFilter(event.target.value); setFloorFilter(""); setRoomFilter(""); }} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="">Building</option>
+            {buildingOptions.map((building) => <option key={building} value={building}>{building}</option>)}
+          </select>
+          <select value={floorFilter} onChange={(event) => { setFloorFilter(event.target.value); setRoomFilter(""); }} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="">Floor</option>
+            {floorOptions.map((floor) => <option key={floor} value={floor}>{floor}</option>)}
+          </select>
+          <select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="">Room</option>
+            {roomOptions.map((room) => <option key={room} value={room}>{room}</option>)}
+          </select>
+          <button type="button" onClick={() => { setSiteFilter(""); setBuildingFilter(""); setFloorFilter(""); setRoomFilter(""); }} className="h-11 rounded-lg bg-white px-3 text-sm font-black text-lagoon">Clear Location</button>
+        </div>
+        <div className="max-w-full overflow-auto rounded-lg border border-slate-200 scrollbar-thin">
+          <table className="min-w-[1500px] border-collapse bg-white text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-3 py-3"><input type="checkbox" /></th>
+                <th className="px-3 py-3">Name</th>
+                <th className="px-3 py-3">Asset Type</th>
+                <th className="px-3 py-3">Location</th>
+                <th className="px-3 py-3">Manufacturer</th>
+                <th className="px-3 py-3">Model</th>
+                <th className="px-3 py-3">URL</th>
+                <th className="px-3 py-3">Description</th>
+                <th className="px-3 py-3">Serial No.</th>
+                <th className="px-3 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleAssets.map((asset) => (
+                <tr key={asset.id} onClick={() => { setSelectedAssetId(asset.id); setPreviewAsset(asset); }} className="cursor-pointer border-t border-slate-100 hover:bg-slate-50">
+                  <td className="px-3 py-3"><input type="checkbox" onClick={(event) => event.stopPropagation()} /></td>
+                  <td className="px-3 py-3 font-black text-ink">{asset.assetDescription ?? asset.name}</td>
+                  <td className="px-3 py-3">{asset.assetGroup ?? asset.category}</td>
+                  <td className="px-3 py-3 text-lagoon">{[asset.buildingCode, asset.floor, asset.room].filter(Boolean).join(" > ") || "-"}</td>
+                  <td className="px-3 py-3">{asset.manufacturer}</td>
+                  <td className="px-3 py-3">{asset.model}</td>
+                  <td className="px-3 py-3 text-lagoon">{asset.documentationUrl ? <a href={String(asset.documentationUrl).split(/\s+/)[0]} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{asset.assetDescription ?? asset.name}</a> : "-"}</td>
+                  <td className="max-w-[360px] px-3 py-3"><div className="line-clamp-2">{asset.additionalDescription || asset.remarks || "-"}</div></td>
+                  <td className="px-3 py-3">{asset.serialNumber || "-"}</td>
+                  <td className="px-3 py-3"><span className="rounded-full bg-lime-100 px-2 py-1 text-xs font-black text-lime-700">{asset.status === "ACTIVE" ? "Online" : asset.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3"><PaginationControls page={currentPage} totalPages={totalPages} onPageChange={setPage} totalItems={filtered.length} /></div>
+      </Panel>
+      {canManageAssets && createOpen && <RequestModalShell title="Add Asset" onClose={() => setCreateOpen(false)}><AssetCreateForm teams={teams} users={users} locations={locations} onSubmit={async (formData) => { await submitAsset(formData); setCreateOpen(false); }} saving={saving} /></RequestModalShell>}
+      {previewAsset && (
+        <AssetPreviewModal
+          asset={previewAsset}
+          canManageAssets={canManageAssets}
+          onClose={() => setPreviewAsset(null)}
+          onEdit={() => setPreviewAsset({ ...previewAsset, editing: true })}
+          onCreateWorkOrder={() => {
+            setAssetWorkOrderDraft(previewAsset);
+            setPreviewAsset(null);
+          }}
+        >
+          {canManageAssets && previewAsset.editing && <AssetEditForm asset={previewAsset} teams={teams} users={users} saving={saving} onSubmit={(formData) => updateAsset(previewAsset.id, formData)} />}
+        </AssetPreviewModal>
+      )}
+      {assetWorkOrderDraft && (
+        <RequestModalShell title={`Create Work Order - ${assetWorkOrderDraft.assetDescription || assetWorkOrderDraft.name}`} onClose={() => setAssetWorkOrderDraft(null)}>
+          <WorkOrderForm
+            title="Asset Work Order"
+            data={data}
+            work={{
+              title: `Work Order - ${assetWorkOrderDraft.assetDescription || assetWorkOrderDraft.name}`,
+              type: "Corrective",
+              assetType: assetWorkOrderDraft.assetGroup || assetWorkOrderDraft.category || "",
+              asset: { tag: assetWorkOrderDraft.tag },
+              assetTag: assetWorkOrderDraft.tag,
+              departmentCode: assetWorkOrderDraft.departmentCode || "",
+              assignedTeamCode: assetWorkOrderDraft.assignedTeamCode || "",
+              priority: "MEDIUM",
+              jobPlan: `Inspect ${assetWorkOrderDraft.assetDescription || assetWorkOrderDraft.name} at ${[assetWorkOrderDraft.buildingCode, assetWorkOrderDraft.floor, assetWorkOrderDraft.room].filter(Boolean).join(" > ") || "selected location"}. Diagnose issue, record parts used, update asset history and attach proof.`,
+              safetyNotes: "Follow site safety procedures, verify access, PPE and isolation requirements.",
+              estimatedHours: 2,
+              cost: 0,
+            }}
+            onSubmit={async (formData) => {
+              await submitWorkOrder(formData);
+              setAssetWorkOrderDraft(null);
+            }}
+            saving={saving}
+          />
+        </RequestModalShell>
+      )}
+    </section>
+  );
+}
+
+function AssetCreateForm({ teams, users, locations, onSubmit, saving }: { teams: any[]; users: any[]; locations: any[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const assetNumber = String(formData.get("tag") ?? "").trim();
+    const assetDescription = String(formData.get("assetDescription") ?? "").trim();
+    const assetGroup = String(formData.get("assetGroup") ?? "").trim();
+    const lifeMonths = Number(formData.get("lifeExpectancyMonths") || 96);
+    const purchaseDate = String(formData.get("installDate") || "");
+    const url1 = String(formData.get("documentationUrl") || "").trim();
+    const url2 = String(formData.get("documentationUrl2") || "").trim();
+    const vendors = String(formData.get("contractRef") || "").trim();
+    const parts = String(formData.get("remarks") || "").trim();
+    const replacementCost = String(formData.get("replacementCost") || "").trim();
+
+    formData.set("name", assetDescription || assetNumber);
+    formData.set("category", assetGroup || "General");
+    formData.set("system", String(formData.get("system") || assetGroup || "General"));
+    formData.set("criticality", "MEDIUM");
+    formData.set("conditionScore", "85");
+    if (purchaseDate) {
+      const replacement = new Date(purchaseDate);
+      replacement.setMonth(replacement.getMonth() + (Number.isFinite(lifeMonths) ? lifeMonths : 96));
+      formData.set("replacementDate", replacement.toISOString().slice(0, 10));
+    }
+    formData.set("documentationUrl", [url1, url2].filter(Boolean).join("\n"));
+    formData.set("remarks", [
+      parts ? `Parts: ${parts}` : "",
+      vendors ? `Vendors: ${vendors}` : "",
+      replacementCost ? `Replacement Cost: ${replacementCost}` : "",
+    ].filter(Boolean).join("\n"));
+
+    await onSubmit(formData);
+    form.reset();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <div className="mb-4 flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-sun/50 text-amber-700">
+          <PackagePlus size={20} />
+        </div>
+        <div>
+          <h3 className="text-xl font-black">Register Asset</h3>
+          <p className="text-sm font-bold text-slate-500">Manual entry using the asset bulk upload template fields</p>
+        </div>
+      </div>
+      <div className="grid gap-3">
+        <AssetTextField label="Entity Name" name="system" />
+        <AssetTextField label="Asset Name" name="assetDescription" />
+        <AssetTextField label="Description" name="additionalDescription" />
+        <AssetLocationSelects locations={locations} />
+        <AssetTextField label="Asset Type" name="assetGroup" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AssetTextField label="Model No." name="model" />
+          <AssetTextField label="Manufacturer" name="manufacturer" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AssetTextField label="Serial No." name="serialNumber" />
+          <AssetTextField label="Purchase Date" name="installDate" type="date" />
+        </div>
+        <AssetTextField label="QR Code" name="qrCode" />
+        <AssetTextField label="Parent Asset" name="parentAsset" />
+        <AssetTextField label="Department Code" name="departmentCode" />
+        <AssetAssignmentFields teams={teams} users={users} />
+        <AssetTextField label="Vendors" name="contractRef" />
+        <AssetTextField label="Asset Code" name="tag" />
+        <AssetTextField label="Parts" name="remarks" />
+        <AssetTextField label="URL 1" name="documentationUrl" />
+        <AssetTextField label="URL Label 1" name="urlLabel1" />
+        <AssetTextField label="URL 2" name="documentationUrl2" />
+        <AssetTextField label="URL Label 2" name="urlLabel2" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AssetTextField label="Warranty Expiry Date" name="warrantyExpiry" type="date" />
+          <AssetTextField label="Life Expectancy (in months)" name="lifeExpectancyMonths" type="number" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <AssetTextField label="Purchase Cost" name="purchaseCost" type="number" />
+          <AssetTextField label="Replacement Cost" name="replacementCost" type="number" />
+          <AssetTextField label="Salvage Value" name="salvageValue" type="number" />
+        </div>
+        <button disabled={saving} className="mt-2 flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-4 font-black text-white disabled:cursor-not-allowed disabled:bg-slate-400">
+          <Plus size={18} />
+          {saving ? "Saving..." : "Save Asset"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function AssetTextField({ label, name, required = false, defaultValue = "", type = "text" }: { label: string; name: string; required?: boolean; defaultValue?: string; type?: string }) {
+  return (
+    <label className="grid gap-1 text-sm font-bold text-slate-600">
+      {label}
+      <input
+        name={name}
+        type={type}
+        required={required}
+        defaultValue={defaultValue}
+        className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon"
+      />
+    </label>
+  );
+}
+
+function AssetLocationSelects({
+  locations,
+  defaults = {},
+}: {
+  locations: any[];
+  defaults?: { siteCode?: string; buildingCode?: string; floor?: string; room?: string };
+}) {
+  const [site, setSite] = useState(defaults.siteCode ?? "");
+  const [building, setBuilding] = useState(defaults.buildingCode ?? "");
+  const [floor, setFloor] = useState(defaults.floor ?? "");
+  const [room, setRoom] = useState(defaults.room ?? "");
+  const optionValues = (field: "site" | "building" | "floor" | "room") => Array.from(new Set(
+    locations
+      .filter((location) => !site || field === "site" || location.site === site)
+      .filter((location) => !building || field === "site" || field === "building" || location.building === building)
+      .filter((location) => !floor || field === "site" || field === "building" || field === "floor" || location.floor === floor)
+      .map((location) => location[field])
+      .filter(Boolean)
+  ));
+  const fieldClass = "h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold outline-none focus:border-lagoon";
+
+  return (
+    <div className="grid gap-3 rounded-lg bg-slate-50 p-3">
+      <p className="text-xs font-black uppercase text-slate-500">Location drill-down</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-sm font-bold text-slate-600">
+          Site
+          <select name="siteCode" value={site} onChange={(event) => { setSite(event.target.value); setBuilding(""); setFloor(""); setRoom(""); }} className={fieldClass}>
+            <option value="">Select site</option>
+            {optionValues("site").map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">
+          Building
+          <select name="buildingCode" value={building} onChange={(event) => { setBuilding(event.target.value); setFloor(""); setRoom(""); }} className={fieldClass}>
+            <option value="">Select building</option>
+            {optionValues("building").map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">
+          Floor
+          <select name="floor" value={floor} onChange={(event) => { setFloor(event.target.value); setRoom(""); }} className={fieldClass}>
+            <option value="">Select floor</option>
+            {optionValues("floor").map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">
+          Room
+          <select name="room" value={room} onChange={(event) => setRoom(event.target.value)} className={fieldClass}>
+            <option value="">Select room</option>
+            {optionValues("room").map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function AssetAssignmentFields({
+  teams,
+  users,
+  defaultTeam = "",
+  defaultSupervisor = "",
+}: {
+  teams: any[];
+  users: any[];
+  defaultTeam?: string;
+  defaultSupervisor?: string;
+}) {
+  const supervisors = users.filter((user) => String(user.role ?? "").toLowerCase().includes("supervisor") || String(user.role ?? "").toLowerCase().includes("admin"));
+  const fieldClass = "h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold outline-none focus:border-lagoon";
+
+  return (
+    <div className="grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">
+      <label className="grid gap-1 text-sm font-bold text-slate-600">
+        Assigned Team
+        <select name="assignedTeamCode" defaultValue={defaultTeam} className={fieldClass}>
+          <option value="">Unassigned</option>
+          {teams.map((team) => <option key={team.id ?? team.code} value={team.code}>{team.code} - {team.name}</option>)}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-bold text-slate-600">
+        Assigned Supervisor
+        <select name="assignedSupervisorEmail" defaultValue={defaultSupervisor} className={fieldClass}>
+          <option value="">Unassigned</option>
+          {supervisors.map((user) => <option key={user.id ?? user.email} value={user.email}>{user.name || user.email} / {user.department || "All departments"}</option>)}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function AssetHistoryPanel({ asset }: { asset: any }) {
+  return (
+    <Panel title="Asset History" icon={CalendarCheck}>
+      <div className="grid gap-2">
+        {(asset.history ?? []).length === 0 && <p className="text-sm text-slate-500">No history recorded yet.</p>}
+        {(asset.history ?? []).map((event: any) => (
+          <div key={event.id} className="rounded-lg bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-black">{event.title}</p>
+              <span className="text-xs text-slate-500">{new Date(event.createdAt).toLocaleDateString()}</span>
+            </div>
+            <p className="mt-1 text-sm text-slate-600">{event.details}</p>
+            <p className="mt-1 text-xs font-bold text-lagoon">{event.eventType} / {event.actor}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function AssetIdentity({ asset }: { asset: any }) {
+  const bars = String(asset.tag)
+    .split("")
+    .slice(0, 22)
+    .map((char: string, index: number) => ((char.charCodeAt(0) + index) % 4) + 1);
+  const purchase = Number(asset.purchaseCost ?? 0);
+  const salvage = Number(asset.salvageValue ?? 0);
+  const annualRate = Number(asset.depreciationRate ?? 0) / 100;
+  const ageYears = Math.max(0, (Date.now() - new Date(asset.installDate ?? Date.now()).getTime()) / (365 * 24 * 60 * 60 * 1000));
+  const bookValue = Math.max(salvage, purchase - purchase * annualRate * ageYears);
+
+  return (
+    <Panel title="Asset Identification" icon={ClipboardCheck}>
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <p className="text-xs font-black uppercase text-slate-500">QR / Barcode Payload</p>
+        <p className="mt-1 break-words font-black text-lagoon">{asset.qrCode ?? `CAFM-ASSET:${asset.tag}`}</p>
+        <div className="mt-4 flex h-20 items-end gap-1 rounded-lg bg-white p-3">
+          {bars.map((width, index) => (
+            <span key={`${asset.tag}-${index}`} className="h-full bg-ink" style={{ width }} />
+          ))}
+        </div>
+        <div className="mt-4 grid gap-2 text-sm text-slate-700">
+          <span>Serial: {asset.serialNumber ?? "-"}</span>
+          <span>Site / Zone / Building: {asset.siteCode ?? "-"} / {asset.zone ?? "-"} / {asset.buildingCode ?? "-"}</span>
+          <span>Asset group: {asset.assetGroup ?? "-"}</span>
+          <span>Description: {asset.assetDescription ?? asset.name ?? "-"}</span>
+          <span>Additional description: {asset.additionalDescription ?? "-"}</span>
+          <span>Parent asset: {asset.parentAsset ?? "-"}</span>
+          <span>Department: {asset.departmentCode ?? "-"}</span>
+          <span>Floor / Room: {asset.floor ?? "-"} / {asset.room ?? "-"}</span>
+          <span>Remarks: {asset.remarks ?? "-"}</span>
+          <span>Warranty: {asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toLocaleDateString() : "-"}</span>
+          <span>Contract: {asset.contractRef ?? "-"}</span>
+          <span>Book value: ${bookValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function AssetEditForm({ asset, teams, users, saving, onSubmit }: { asset: any; teams: any[]; users: any[]; saving: boolean; onSubmit: (formData: FormData) => void }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+  }
+
+  const fieldClass = "h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon";
+  const textValue = (value: unknown) => (value === null || value === undefined ? "" : String(value));
+  const dateValue = (value: unknown) => (value ? new Date(String(value)).toISOString().slice(0, 10) : "");
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">Admin Edit Asset</h3>
+      <p className="mt-1 text-sm font-bold text-slate-500">Same structure as the HVAC asset register template.</p>
+      <div className="mt-4 grid gap-4">
+        <div>
+          <p className="mb-3 text-xs font-black uppercase text-lagoon">HVAC Asset Register Fields</p>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <EditField label="SITE" name="siteCode" defaultValue={textValue(asset.siteCode)} />
+              <EditField label="ZONE" name="zone" defaultValue={textValue(asset.zone)} />
+              <EditField label="BLDG" name="buildingCode" defaultValue={textValue(asset.buildingCode)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <EditField label="FLOOR" name="floor" defaultValue={textValue(asset.floor)} />
+              <EditField label="ROOM" name="room" defaultValue={textValue(asset.room)} />
+            </div>
+            <EditField label="Asset Group" name="assetGroup" defaultValue={textValue(asset.assetGroup)} />
+            <EditField label="ASSET NUMBER" name="tag" defaultValue={textValue(asset.tag)} />
+            <EditField label="Asset Description" name="assetDescription" defaultValue={textValue(asset.assetDescription)} />
+            <EditField label="Additional description" name="additionalDescription" defaultValue={textValue(asset.additionalDescription)} />
+            <EditField label="Parent Asset" name="parentAsset" defaultValue={textValue(asset.parentAsset)} />
+            <EditField label="Department" name="departmentCode" defaultValue={textValue(asset.departmentCode)} />
+            <AssetAssignmentFields teams={teams} users={users} defaultTeam={textValue(asset.assignedTeamCode)} defaultSupervisor={textValue(asset.assignedSupervisorEmail)} />
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Remarks
+              <textarea name="remarks" defaultValue={textValue(asset.remarks)} className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            </label>
+          </div>
+        </div>
+        <div>
+          <p className="mb-3 text-xs font-black uppercase text-lagoon">Additional CAFM Fields</p>
+          <div className="grid gap-3">
+            <EditField label="System display name" name="name" defaultValue={textValue(asset.name)} />
+            <EditField label="Category" name="category" defaultValue={textValue(asset.category)} />
+            <EditField label="System" name="system" defaultValue={textValue(asset.system)} />
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Criticality
+              <select name="criticality" defaultValue={asset.criticality} className={fieldClass}>
+                <option>LOW</option>
+                <option>MEDIUM</option>
+                <option>HIGH</option>
+                <option>CRITICAL</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Status
+              <select name="status" defaultValue={asset.status} className={fieldClass}>
+                <option>ACTIVE</option>
+                <option>STANDBY</option>
+                <option>DOWN</option>
+                <option>RETIRED</option>
+              </select>
+            </label>
+            <EditField label="Serial number" name="serialNumber" defaultValue={textValue(asset.serialNumber)} />
+            <EditField label="Manufacturer" name="manufacturer" defaultValue={textValue(asset.manufacturer)} />
+            <EditField label="Model" name="model" defaultValue={textValue(asset.model)} />
+            <EditField label="Warranty expiry" name="warrantyExpiry" type="date" defaultValue={dateValue(asset.warrantyExpiry)} />
+            <EditField label="Contract reference" name="contractRef" defaultValue={textValue(asset.contractRef)} />
+            <ImageUploadField name="documentationUrl" defaultValue={textValue(asset.documentationUrl)} />
+            <div className="grid grid-cols-3 gap-3">
+              <EditField label="Cost" name="purchaseCost" type="number" defaultValue={textValue(asset.purchaseCost)} />
+              <EditField label="Salvage" name="salvageValue" type="number" defaultValue={textValue(asset.salvageValue)} />
+              <EditField label="Dep. %" name="depreciationRate" type="number" defaultValue={textValue(asset.depreciationRate)} />
+            </div>
+            <EditField label="Condition score" name="conditionScore" type="number" defaultValue={textValue(asset.conditionScore)} />
+          </div>
+        </div>
+        <button disabled={saving} className="h-11 rounded-lg bg-coral font-black text-white disabled:bg-slate-400">Save Admin Changes</button>
+      </div>
+    </form>
+  );
+}
+
+function EditField({ label, name, defaultValue, required = false, type = "text" }: { label: string; name: string; defaultValue: string; required?: boolean; type?: string }) {
+  return (
+    <label className="grid gap-1 text-sm font-bold text-slate-600">
+      {label}
+      <input
+        name={name}
+        type={type}
+        required={required}
+        min={type === "number" && name === "conditionScore" ? 0 : undefined}
+        max={type === "number" && name === "conditionScore" ? 100 : undefined}
+        defaultValue={defaultValue}
+        className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon"
+      />
+    </label>
+  );
+}
+
+function WorkOrders({
+  data,
+  submitWorkOrder,
+  saving,
+  permissions,
+  role,
+  updateWorkOrder,
+  updateWorkStatus,
+  deleteWorkOrder,
+}: {
+  data: ConsoleData;
+  submitWorkOrder: (formData: FormData) => void;
+  saving: boolean;
+  permissions: ActionPermissions;
+  role: string;
+  updateWorkOrder: (id: string, formData: FormData) => Promise<void> | void;
+  updateWorkStatus: (id: string, status: string) => Promise<void> | void;
+  deleteWorkOrder: (id: string) => Promise<void> | void;
+}) {
+  const [editing, setEditing] = useState<any | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [previewWork, setPreviewWork] = useState<any | null>(null);
+  const [reviewWork, setReviewWork] = useState<{ work: any; action: "close" | "reopen" } | null>(null);
+  const [selectedWorkId, setSelectedWorkId] = useState<string | null>(data.workOrders[0]?.id ?? null);
+  const [workAction, setWorkAction] = useState<string | null>(null);
+  const [showTimeMetrics, setShowTimeMetrics] = useState(false);
+  const [showOnlyDelayed, setShowOnlyDelayed] = useState(false);
+  const [view, setView] = useState<"list" | "calendar">("list");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [assignedFilter, setAssignedFilter] = useState("All");
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [monthDate, setMonthDate] = useState(() => new Date());
+  const isTechnician = roleKindLabel(role) === "technician";
+  const canAssignOrEdit = permissions.manageWork && !isTechnician;
+  const canExecute = permissions.executeWork;
+  const canFinalReview = permissions.verifyWork && !isTechnician;
+  const statuses = ["All", ...Array.from(new Set(data.workOrders.map((work) => work.status).filter(Boolean)))];
+  const categories = ["All", ...Array.from(new Set(data.workOrders.map((work) => work.departmentCode || work.assetType).filter(Boolean)))];
+  const types = ["All", ...Array.from(new Set(data.workOrders.map((work) => work.type).filter(Boolean)))];
+  const teams = ["All", ...Array.from(new Set(data.workOrders.map((work) => work.assignedTeamCode).filter(Boolean)))];
+  const filteredWorks = useMemo(() => {
+    const sourceRows = showTimeMetrics ? workMetricRows(data.workOrders, showOnlyDelayed) : data.workOrders;
+    return sourceRows.filter((work) => {
+      const haystack = `${work.woNo} ${work.title} ${work.type} ${work.assetType} ${work.departmentCode} ${work.serviceCode} ${work.assignedTeamCode} ${work.location} ${work.jobPlan}`.toLowerCase();
+      const queryMatch = !search || haystack.includes(search.toLowerCase());
+      const statusMatch = statusFilter === "All" || work.status === statusFilter;
+      const priorityMatch = priorityFilter === "All" || work.priority === priorityFilter;
+      const categoryMatch = categoryFilter === "All" || work.departmentCode === categoryFilter || work.assetType === categoryFilter;
+      const typeMatch = typeFilter === "All" || work.type === typeFilter;
+      const assignedMatch = assignedFilter === "All" || work.assignedTeamCode === assignedFilter || (assignedFilter === "Not Assigned" && !work.assignedTeamCode);
+      const dueTime = work.dueAt ? new Date(work.dueAt).getTime() : null;
+      const overdueMatch = !overdueOnly || (dueTime !== null && dueTime <= Date.now() + 24 * 60 * 60 * 1000 && work.status !== "CLOSED");
+      return queryMatch && statusMatch && priorityMatch && categoryMatch && typeMatch && assignedMatch && overdueMatch;
+    });
+  }, [data.workOrders, search, statusFilter, priorityFilter, categoryFilter, typeFilter, assignedFilter, overdueOnly, showTimeMetrics, showOnlyDelayed]);
+  const selectedWork = filteredWorks.find((work) => work.id === selectedWorkId) ?? filteredWorks[0] ?? data.workOrders[0];
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filteredWorks.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleWorks = filteredWorks.slice(startIndex, startIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    if (filteredWorks.length && !filteredWorks.some((work) => work.id === selectedWorkId)) {
+      setSelectedWorkId(filteredWorks[0].id);
+    }
+  }, [filteredWorks, selectedWorkId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, priorityFilter, categoryFilter, typeFilter, assignedFilter, overdueOnly, showTimeMetrics, showOnlyDelayed, filteredWorks.length]);
+
+  async function runWorkAction(key: string, work: any, action: () => Promise<void> | void) {
+    setSelectedWorkId(work.id);
+    setWorkAction(key);
+    try {
+      await action();
+    } finally {
+      setWorkAction(null);
+    }
+  }
+
+  async function quickPatchWork(work: any, body: Record<string, string>) {
+    const formData = new FormData();
+    Object.entries(body).forEach(([key, value]) => formData.append(key, value));
+    await updateWorkOrder(work.id, formData);
+    setPreviewWork((current: any) => current?.id === work.id ? { ...current, ...body } : current);
+  }
+
+  return (
+    <section className="space-y-5">
+      <Panel title="Work Orders" icon={Wrench}>
+        <ReportButtons type="work-orders" label="Work orders report" />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setView("list")} className={`h-10 rounded-lg px-4 text-sm font-black ${view === "list" ? "bg-lagoon text-white" : "bg-slate-50 text-slate-600"}`}>List</button>
+            <button type="button" onClick={() => setView("calendar")} className={`h-10 rounded-lg px-4 text-sm font-black ${view === "calendar" ? "bg-lagoon text-white" : "bg-slate-50 text-slate-600"}`}>Calendar</button>
+          </div>
+          <div className="flex min-w-[280px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 lg:max-w-md">
+            <Search size={16} className="text-slate-400" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Work Orders" className="h-11 w-full text-sm outline-none" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setShowTimeMetrics((current) => !current)} className={`h-10 rounded-lg px-3 text-sm font-black ${showTimeMetrics ? "bg-lagoon text-white" : "bg-slate-50 text-lagoon"}`}>KPIs</button>
+            {canAssignOrEdit && <button type="button" onClick={() => { setEditing(null); setCreateOpen(true); }} className="flex h-10 items-center gap-2 rounded-lg bg-lagoon px-4 text-sm font-black text-white"><Plus size={16} /> Work Order</button>}
+          </div>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-700">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3">
+            {statuses.map((status) => <option key={status} value={status}>{status === "All" ? "Status" : status}</option>)}
+          </select>
+          <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3">
+            <option value="All">Priority</option><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option>
+          </select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3">
+            {categories.map((category) => <option key={category} value={category}>{category === "All" ? "Category" : category}</option>)}
+          </select>
+          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3">
+            {types.map((type) => <option key={type} value={type}>{type === "All" ? "Work Type" : type}</option>)}
+          </select>
+          <select value={assignedFilter} onChange={(event) => setAssignedFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3">
+            <option value="All">Assigned to</option>
+            <option value="Not Assigned">Not Assigned</option>
+            {teams.filter((team) => team !== "All").map((team) => <option key={team} value={team}>{team}</option>)}
+          </select>
+          <button type="button" onClick={() => setAssignedFilter("Not Assigned")} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-lagoon">Not Assigned</button>
+          <button type="button" onClick={() => setOverdueOnly((current) => !current)} className={`h-10 rounded-lg px-3 ${overdueOnly ? "bg-coral text-white" : "border border-slate-200 bg-white text-lagoon"}`}>Overdue & Due Today</button>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={showTimeMetrics} onChange={(event) => setShowTimeMetrics(event.target.checked)} /> Show Time Metrics</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={showOnlyDelayed} onChange={(event) => setShowOnlyDelayed(event.target.checked)} /> Show Only Delayed</label>
+          <button type="button" onClick={() => { setSearch(""); setStatusFilter("All"); setPriorityFilter("All"); setCategoryFilter("All"); setTypeFilter("All"); setAssignedFilter("All"); setOverdueOnly(false); }} className="ml-auto h-10 rounded-lg bg-white px-3 text-lagoon">Clear all</button>
+        </div>
+        {view === "list" ? (
+          <>
+            <div className="overflow-auto rounded-lg border border-slate-200 scrollbar-thin">
+              <table className="min-w-[1700px] border-collapse bg-white text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-3 font-black">#</th>
+                    <th className="px-3 py-3 font-black">Title</th>
+                    <th className="px-3 py-3 font-black">Status</th>
+                    <th className="px-3 py-3 font-black">Priority</th>
+                    <th className="px-3 py-3 font-black">Category</th>
+                    <th className="px-3 py-3 font-black">Due Date</th>
+                    <th className="px-3 py-3 font-black">Asset</th>
+                    <th className="px-3 py-3 font-black">Location</th>
+                    <th className="px-3 py-3 font-black">Work Type</th>
+                    <th className="px-3 py-3 font-black">Description</th>
+                    <th className="px-3 py-3 font-black">Created when</th>
+                    <th className="px-3 py-3 font-black">Assigned To</th>
+                    <th className="px-3 py-3 font-black">Updated when</th>
+                    <th className="px-3 py-3 font-black">Schedule</th>
+                    <th className="px-3 py-3 font-black">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleWorks.map((work, index) => (
+                    <tr key={work.id} onClick={() => { setSelectedWorkId(work.id); setPreviewWork(work); }} className={`cursor-pointer border-t border-slate-100 align-top ${selectedWork?.id === work.id ? "bg-lagoon/5" : "hover:bg-slate-50"}`}>
+                      <td className="whitespace-nowrap px-3 py-3 font-black text-slate-500">{startIndex + index + 1}</td>
+                      <td className="max-w-[280px] px-3 py-3"><div className="font-black">{work.title}</div><div className="mt-1 text-xs font-bold text-slate-500">{work.woNo}</div></td>
+                      <td className="whitespace-nowrap px-3 py-3"><WorkOrderStatusBadge status={work.status} /></td>
+                      <td className="whitespace-nowrap px-3 py-3"><RequestPriorityBadge priority={work.priority} /></td>
+                      <td className="whitespace-nowrap px-3 py-3">{work.departmentCode || work.assetType || "-"}</td>
+                      <td className="whitespace-nowrap px-3 py-3">{formatDateCell(work.dueAt)}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-lagoon">{work.asset?.tag ?? work.assetTag ?? "-"}</td>
+                      <td className="max-w-[260px] px-3 py-3 text-slate-600">{work.asset?.buildingCode || work.asset?.floor || work.location || "-"}</td>
+                      <td className="whitespace-nowrap px-3 py-3">{work.type || "-"}</td>
+                      <td className="max-w-[320px] px-3 py-3 text-slate-600"><div className="line-clamp-2">{work.jobPlan || work.workNotes || work.title}</div></td>
+                      <td className="whitespace-nowrap px-3 py-3">{formatDateCell(work.createdAt)}</td>
+                      <td className="whitespace-nowrap px-3 py-3">{work.assignedTo?.email ?? work.assignedTeamCode ?? "-"}</td>
+                      <td className="whitespace-nowrap px-3 py-3">{formatDateCell(work.updatedAt)}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-lagoon">{formatDateCell(work.plannedStart)}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex min-w-[300px] flex-wrap gap-2">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedWorkId(work.id); setPreviewWork(work); }} className="rounded-lg bg-white px-3 py-2 text-xs font-black text-lagoon ring-1 ring-lagoon/30">Preview</button>
+                          {canAssignOrEdit && work.status !== "CLOSED" && <button type="button" disabled={workAction === `${work.id}:edit`} onClick={(event) => { event.stopPropagation(); setSelectedWorkId(work.id); setEditing(work); }} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">Edit</button>}
+                          {canExecute && work.status !== "CLOSED" && work.status !== "PENDING_SUPERVISOR_REVIEW" && <button type="button" disabled={workAction === `${work.id}:start`} onClick={(event) => { event.stopPropagation(); runWorkAction(`${work.id}:start`, work, () => updateWorkStatus(work.id, "IN_PROGRESS")); }} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">In Progress</button>}
+                          {canExecute && work.status !== "CLOSED" && work.status !== "PENDING_SUPERVISOR_REVIEW" && <button type="button" disabled={workAction === `${work.id}:hold`} onClick={(event) => { event.stopPropagation(); runWorkAction(`${work.id}:hold`, work, () => updateWorkStatus(work.id, "ON_HOLD")); }} className="rounded-lg bg-slate-500 px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">On Hold</button>}
+                          {canExecute && work.status !== "CLOSED" && work.status !== "PENDING_SUPERVISOR_REVIEW" && <button type="button" disabled={workAction === `${work.id}:complete`} onClick={(event) => { event.stopPropagation(); runWorkAction(`${work.id}:complete`, work, () => updateWorkStatus(work.id, "COMPLETED")); }} className="rounded-lg bg-leaf px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">Submit Review</button>}
+                          {canFinalReview && ["PENDING_SUPERVISOR_REVIEW", "COMPLETED"].includes(work.status) && <button type="button" disabled={workAction === `${work.id}:close`} onClick={(event) => { event.stopPropagation(); setSelectedWorkId(work.id); setReviewWork({ work, action: "close" }); }} className="rounded-lg bg-ink px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">Close Work Order</button>}
+                          {canFinalReview && ["PENDING_SUPERVISOR_REVIEW", "COMPLETED"].includes(work.status) && <button type="button" disabled={workAction === `${work.id}:reopen`} onClick={(event) => { event.stopPropagation(); setSelectedWorkId(work.id); setReviewWork({ work, action: "reopen" }); }} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">Reopen</button>}
+                          {canAssignOrEdit && work.status !== "CLOSED" && <button type="button" disabled={workAction === `${work.id}:delete`} onClick={(event) => { event.stopPropagation(); runWorkAction(`${work.id}:delete`, work, () => deleteWorkOrder(work.id)); }} className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">Delete</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3">
+              <PaginationControls page={currentPage} totalPages={totalPages} onPageChange={setPage} totalItems={filteredWorks.length} />
+            </div>
+          </>
+        ) : (
+          <WorkOrderCalendar works={filteredWorks} monthDate={monthDate} setMonthDate={setMonthDate} setSelectedWorkId={setSelectedWorkId} />
+        )}
+        {selectedWork && (
+          <div className="mt-5">
+            <DetailPanel
+              title={`Selected Work Order: ${selectedWork.woNo}`}
+              rows={[
+                ["Title", selectedWork.title],
+                ["Status", selectedWork.status],
+                ["Priority", selectedWork.priority],
+                ["Department", selectedWork.departmentCode],
+                ["Service", selectedWork.serviceCode],
+                ["Team", selectedWork.assignedTeamCode],
+                ["Assigned To", selectedWork.assignedTo?.email ?? selectedWork.assignedToEmail],
+                ["Asset", selectedWork.asset?.tag ?? selectedWork.assetTag],
+                ["Job Plan", selectedWork.jobPlanCode ?? selectedWork.jobPlan],
+                ...workTimingRows(selectedWork),
+                ["Work Notes", selectedWork.workNotes],
+                ["Pictures", selectedWork.photoUrls],
+                ["Inventory Used", selectedWork.inventoryUsed],
+                ["Material Request", selectedWork.materialRequest],
+              ]}
+            />
+          </div>
+        )}
+      </Panel>
+      {canAssignOrEdit && createOpen && (
+        <RequestModalShell title="New Work Order" onClose={() => setCreateOpen(false)}>
+          <WorkOrderForm title="" data={data} onSubmit={async (formData) => { await submitWorkOrder(formData); setCreateOpen(false); }} saving={saving} />
+        </RequestModalShell>
+      )}
+      {editing && canAssignOrEdit && (
+        <RequestModalShell title={`Edit ${editing.woNo}`} onClose={() => setEditing(null)}>
+          <WorkOrderForm title="" data={data} work={editing} onSubmit={async (formData) => { await updateWorkOrder(editing.id, formData); setEditing(null); }} saving={saving} />
+        </RequestModalShell>
+      )}
+      {previewWork && (
+        <WorkOrderPreviewModal
+          work={previewWork}
+          inventory={data.inventory}
+          onClose={() => setPreviewWork(null)}
+          onStatusChange={previewWork.status !== "CLOSED" ? (status) => runWorkAction(`${previewWork.id}:${status}`, previewWork, () => updateWorkStatus(previewWork.id, status)) : undefined}
+          onPatch={(body) => quickPatchWork(previewWork, body)}
+          onEdit={canAssignOrEdit && previewWork.status !== "CLOSED" ? () => { setEditing(previewWork); setPreviewWork(null); } : undefined}
+          onCloseWork={canFinalReview && ["PENDING_SUPERVISOR_REVIEW", "COMPLETED"].includes(previewWork.status) ? () => { setReviewWork({ work: previewWork, action: "close" }); setPreviewWork(null); } : undefined}
+          onReopenWork={canFinalReview && ["PENDING_SUPERVISOR_REVIEW", "COMPLETED"].includes(previewWork.status) ? () => { setReviewWork({ work: previewWork, action: "reopen" }); setPreviewWork(null); } : undefined}
+        />
+      )}
+      {reviewWork && (
+        <WorkOrderSupervisorReviewModal
+          work={reviewWork.work}
+          action={reviewWork.action}
+          teams={data.teams}
+          saving={saving}
+          onClose={() => setReviewWork(null)}
+          onSubmit={async (formData) => {
+            await updateWorkOrder(reviewWork.work.id, formData);
+            setReviewWork(null);
+          }}
+        />
+      )}
+      {selectedWork && canExecute && !canAssignOrEdit && selectedWork.status !== "CLOSED" && selectedWork.status !== "PENDING_SUPERVISOR_REVIEW" && <WorkExecutionForm work={selectedWork} inventory={data.inventory} saving={saving} onSubmit={(formData) => updateWorkOrder(selectedWork.id, formData)} />}
+    </section>
+  );
+}
+
+function AssetPreviewModal({ asset, canManageAssets, onClose, onEdit, onCreateWorkOrder, children }: { asset: any; canManageAssets: boolean; onClose: () => void; onEdit: () => void; onCreateWorkOrder: () => void; children?: React.ReactNode }) {
+  const image = attachmentList(asset.documentationUrl).find(isImageUrl);
+  const docs = attachmentList(asset.documentationUrl);
+  const historyData = (asset.history ?? []).slice(0, 8).map((event: any) => ({
+    name: new Date(event.createdAt).toLocaleDateString(),
+    events: 1,
+  }));
+  const workHistory = asset.workOrders ?? [];
+  const partsHistory = workHistory.flatMap((work: any) => String(work.inventoryUsed ?? "").split(/\r?\n|,/).map((part) => part.trim()).filter(Boolean).map((part) => ({ work: work.woNo, part, updatedAt: work.updatedAt })));
+
+  return (
+    <RequestModalShell title={`Asset | ${asset.assetDescription || asset.name}`} onClose={onClose}>
+      <div className="grid gap-5">
+        <div className="sticky top-0 z-10 -mx-5 -mt-5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-5 py-3 shadow-sm">
+          <div className="flex gap-5 text-sm font-black">
+            <span className="border-b-2 border-lagoon px-2 pb-3 text-ink">Details</span>
+            <span className="px-2 pb-3 text-slate-500">Status (Beta) <span className="rounded-full bg-lime-100 px-2 py-1 text-xs text-lime-700">Online</span></span>
+          </div>
+          <div className="flex gap-2">
+            {canManageAssets && <button type="button" onClick={onCreateWorkOrder} className="rounded-lg bg-lagoon px-4 py-3 text-sm font-black text-white"><Plus size={16} className="inline" /> Work Order</button>}
+            {canManageAssets && <button type="button" onClick={onEdit} className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-lagoon">Edit</button>}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-black text-slate-500"># {asset.tag}</p>
+          <h3 className="mt-1 text-2xl font-black">{asset.assetDescription || asset.name}</h3>
+          <p className="mt-2 max-w-3xl text-sm font-bold text-slate-600">{asset.additionalDescription || asset.remarks || "-"}</p>
+          <div className="mt-4 h-40 w-40 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+            {image ? <img src={image} alt="Asset" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-black text-slate-400">No Image</div>}
+          </div>
+        </div>
+        <div className="border-t border-slate-200 pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="font-black">Details</h4>
+            <p className="text-xs font-bold text-slate-400">Last update on {formatDateCell(asset.updatedAt)}</p>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <PreviewField label="Location" value={[asset.buildingCode, asset.floor, asset.room].filter(Boolean).join(" > ")} />
+            <PreviewField label="Asset type" value={asset.assetGroup || asset.category} />
+            <PreviewField label="Model" value={asset.model} />
+            <PreviewField label="Manufacturer" value={asset.manufacturer} />
+            <PreviewField label="Serial No." value={asset.serialNumber} />
+            <PreviewField label="Purchase date" value={formatDateCell(asset.installDate)} />
+            <PreviewField label="URL" value={docs.join(" / ")} />
+            <PreviewField label="Parent" value={asset.parentAsset} />
+            <PreviewField label="QR Code" value={asset.qrCode} />
+            <PreviewField label="Warranty" value={formatDateCell(asset.warrantyExpiry)} />
+            <PreviewField label="Assigned Team" value={asset.assignedTeamCode} />
+            <PreviewField label="Supervisor" value={asset.assignedSupervisorEmail} />
+          </div>
+        </div>
+        <div className="border-t border-slate-200 pt-5">
+          <div className="flex items-center justify-between">
+            <h4 className="font-black">Asset Family</h4>
+            <button type="button" className="text-sm font-black text-lagoon">Expand All</button>
+          </div>
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-emerald-100 px-4 py-3 text-sm font-black">
+            <span>{asset.assetDescription || asset.name}</span>
+            <span className="rounded-full bg-lime-100 px-2 py-1 text-xs text-lime-700">Online</span>
+          </div>
+          {canManageAssets && <button type="button" onClick={onEdit} className="mt-3 rounded-lg border border-slate-200 px-4 py-3 text-sm font-black text-lagoon">+ Sub Asset</button>}
+        </div>
+        <div className="border-t border-slate-200 pt-5">
+          <h4 className="font-black">Work Order History</h4>
+          <div className="mt-3 grid gap-2">
+            {workHistory.length ? workHistory.map((work: any) => (
+              <div key={work.woNo} className="rounded-lg bg-slate-50 p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-black text-ink">{work.woNo} / {work.title}</p>
+                  <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-lagoon">{work.status}</span>
+                </div>
+                <p className="mt-1 text-slate-600">{work.workNotes || "No technician notes recorded."}</p>
+                <p className="mt-1 text-xs font-bold text-slate-400">Updated {formatDateCell(work.updatedAt)}</p>
+              </div>
+            )) : <p className="text-sm font-bold text-slate-500">No linked work orders yet.</p>}
+          </div>
+          <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-sm font-black">Parts Replaced / Used</p>
+            <div className="mt-2 grid gap-2">
+              {partsHistory.length ? partsHistory.map((part: any, index: number) => (
+                <div key={`${part.work}-${part.part}-${index}`} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm font-bold">
+                  <span>{part.part}</span>
+                  <span className="text-xs text-slate-400">{part.work}</span>
+                </div>
+              )) : <span className="text-sm text-slate-500">No parts usage recorded.</span>}
+            </div>
+          </div>
+          <div className="mt-3 h-52 rounded-lg bg-slate-50 p-3">
+            {historyData.length ? (
+              <ResponsiveContainer>
+                <BarChart data={historyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#d9e6ee" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="events" fill="#0f8b8d" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <div className="grid h-full place-items-center text-sm font-black text-slate-400">Not Enough Data</div>}
+          </div>
+        </div>
+        <div className="border-t border-slate-200 pt-5">
+          <h4 className="font-black">Asset History Timeline</h4>
+          <div className="mt-3 grid gap-3">
+            {(asset.history ?? []).length ? (asset.history ?? []).map((event: any) => (
+              <div key={event.id} className="border-l-4 border-lagoon bg-slate-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-black">{event.title}</p>
+                  <span className="text-xs font-bold text-slate-400">{formatDateCell(event.createdAt)}</span>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">{event.details}</p>
+                <p className="mt-1 text-xs font-black text-lagoon">{event.eventType} / {event.actor}</p>
+              </div>
+            )) : <p className="text-sm font-bold text-slate-500">No history recorded yet.</p>}
+          </div>
+        </div>
+        {children}
+      </div>
+    </RequestModalShell>
+  );
+}
+
+function Helpdesk({
+  requests,
+  assets,
+  services,
+  assetCategories,
+  departments,
+  teams,
+  locations,
+  submitRequest,
+  permissions,
+  role,
+  updateRequest,
+  deleteRequest,
+  convertRequest,
+  saving,
+}: {
+  requests: any[];
+  assets: any[];
+  services: any[];
+  assetCategories: any[];
+  departments: any[];
+  teams: any[];
+  locations: any[];
+  submitRequest: (formData: FormData) => void;
+  permissions: ActionPermissions;
+  role: string;
+  updateRequest: (id: string, formData: FormData) => Promise<void> | void;
+  deleteRequest: (id: string) => Promise<void> | void;
+  convertRequest: (id: string, assignment?: { assignedTeamCode?: string; assignedToEmail?: string; assetTag?: string }) => Promise<void> | void;
+  saving: boolean;
+}) {
+  const [editing, setEditing] = useState<any | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [previewRequest, setPreviewRequest] = useState<any | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(requests[0]?.id ?? null);
+  const [requestAction, setRequestAction] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<Record<string, { assignedTeamCode: string; assignedToEmail: string; assetTag: string }>>({});
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const isSupervisorView = roleKindLabel(role) === "admin" || roleKindLabel(role) === "supervisor";
+  const requestCategories = ["All", ...Array.from(new Set(requests.map((request) => request.category).filter(Boolean)))];
+  const filteredRequests = useMemo(() => {
+    return requests.filter((request) => {
+      const haystack = `${request.ticketNo} ${request.title} ${request.description} ${request.requester} ${request.location} ${request.category} ${request.departmentCode} ${request.serviceCode}`.toLowerCase();
+      const queryMatch = !search || haystack.includes(search.toLowerCase());
+      const statusMatch = statusFilter === "All" || request.status === statusFilter;
+      const priorityMatch = priorityFilter === "All" || request.priority === priorityFilter;
+      const categoryMatch = categoryFilter === "All" || request.category === categoryFilter;
+      const overdueMatch = !overdueOnly || (request.dueAt ? new Date(request.dueAt).getTime() < Date.now() && request.status !== "CLOSED" : false);
+      return queryMatch && statusMatch && priorityMatch && categoryMatch && overdueMatch;
+    });
+  }, [requests, search, statusFilter, priorityFilter, categoryFilter, overdueOnly]);
+  const selectedRequest = filteredRequests.find((request) => request.id === selectedRequestId) ?? filteredRequests[0] ?? requests[0];
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleRequests = filteredRequests.slice(startIndex, startIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    if (filteredRequests.length && !filteredRequests.some((request) => request.id === selectedRequestId)) {
+      setSelectedRequestId(filteredRequests[0].id);
+    }
+  }, [filteredRequests, selectedRequestId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, priorityFilter, categoryFilter, overdueOnly, filteredRequests.length]);
+
+  async function runRequestAction(key: string, request: any, action: () => Promise<void> | void) {
+    setSelectedRequestId(request.id);
+    setRequestAction(key);
+    try {
+      await action();
+    } finally {
+      setRequestAction(null);
+    }
+  }
+
+  function assignmentFor(request: any) {
+    return assignments[request.id] ?? { assignedTeamCode: request.assignedTeamCode ?? "", assignedToEmail: "", assetTag: request.assetTag ?? "" };
+  }
+
+  function setAssignment(requestId: string, next: Partial<{ assignedTeamCode: string; assignedToEmail: string; assetTag: string }>) {
+    setAssignments((current) => {
+      const previous = current[requestId] ?? { assignedTeamCode: "", assignedToEmail: "", assetTag: "" };
+      return { ...current, [requestId]: { ...previous, ...next } };
+    });
+  }
+
+  return (
+    <section className="space-y-5">
+      <Panel title="Helpdesk & SLA Triage" icon={TicketCheck}>
+        <ReportButtons type="requests" label="Service requests report" />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div className="flex h-11 min-w-[250px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
+              <Search size={16} className="text-slate-400" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search requests" className="w-full text-sm outline-none" />
+            </div>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+              <option value="All">Status</option>
+              <option value="NEW">New</option>
+              <option value="TRIAGED">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+            <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+              <option value="All">Priority</option>
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+              {requestCategories.map((category) => <option key={category} value={category}>{category === "All" ? "Category" : category}</option>)}
+            </select>
+            <button type="button" onClick={() => setOverdueOnly((current) => !current)} className={`h-11 rounded-lg px-3 text-sm font-black ${overdueOnly ? "bg-coral text-white" : "border border-slate-200 bg-white text-slate-600"}`}>Overdue & Due Today</button>
+          </div>
+          {permissions.manageRequests && <button type="button" onClick={() => { setEditing(null); setCreateOpen(true); }} className="flex h-11 items-center gap-2 rounded-lg bg-lagoon px-4 text-sm font-black text-white shadow-sm"><Plus size={16} /> Request</button>}
+        </div>
+
+        <div className="overflow-auto rounded-lg border border-slate-200 scrollbar-thin">
+          <table className="min-w-[1500px] border-collapse bg-white text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-3 py-3 font-black">#</th>
+                <th className="px-3 py-3 font-black">Title</th>
+                <th className="px-3 py-3 font-black">Status</th>
+                <th className="px-3 py-3 font-black">Priority</th>
+                <th className="px-3 py-3 font-black">Category</th>
+                <th className="px-3 py-3 font-black">Created when</th>
+                <th className="px-3 py-3 font-black">Needed by</th>
+                <th className="px-3 py-3 font-black">Location</th>
+                <th className="px-3 py-3 font-black">Department</th>
+                <th className="px-3 py-3 font-black">Service</th>
+                <th className="px-3 py-3 font-black">Description</th>
+                <th className="px-3 py-3 font-black">Created by</th>
+                <th className="px-3 py-3 font-black">Supervisor</th>
+                <th className="px-3 py-3 font-black">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRequests.map((request, index) => {
+                const assignment = assignmentFor(request);
+                return (
+                  <tr
+                    key={request.id}
+                    onClick={() => setSelectedRequestId(request.id)}
+                    className={`cursor-pointer border-t border-slate-100 align-top ${selectedRequest?.id === request.id ? "bg-lagoon/5" : "hover:bg-slate-50"}`}
+                  >
+                    <td className="whitespace-nowrap px-3 py-3 font-black text-slate-500">{startIndex + index + 1}</td>
+                    <td className="max-w-[280px] px-3 py-3">
+                      <div className="font-black text-slate-800">{request.title}</div>
+                      <div className="mt-1 text-xs font-bold text-slate-500">{request.ticketNo}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3"><RequestStatusBadge status={request.status} /></td>
+                    <td className="whitespace-nowrap px-3 py-3"><RequestPriorityBadge priority={request.priority} /></td>
+                    <td className="whitespace-nowrap px-3 py-3">{request.category || "-"}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-slate-600">{formatDateCell(request.createdAt)}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-slate-600">{formatDateCell(request.dueAt)}</td>
+                    <td className="max-w-[260px] px-3 py-3 text-slate-600">{request.location || "-"}</td>
+                    <td className="whitespace-nowrap px-3 py-3">{request.departmentCode || "-"}</td>
+                    <td className="whitespace-nowrap px-3 py-3">{request.serviceCode || "-"}</td>
+                    <td className="max-w-[320px] px-3 py-3 text-slate-600"><div className="line-clamp-2">{request.description || "-"}</div></td>
+                    <td className="whitespace-nowrap px-3 py-3">{request.requester || "-"}</td>
+                    <td className="whitespace-nowrap px-3 py-3">{request.assignedSupervisorEmail || "-"}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex min-w-[260px] flex-wrap gap-2">
+                        {isSupervisorView && permissions.manageRequests && <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedRequestId(request.id); setEditing(request); }} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Edit</button>}
+                        <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedRequestId(request.id); setPreviewRequest(request); }} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-black text-white">Preview</button>
+                        {isSupervisorView && permissions.manageRequests && <button type="button" disabled={Boolean(request.workOrder) || requestAction === `${request.id}:wo`} onClick={(event) => { event.stopPropagation(); runRequestAction(`${request.id}:wo`, request, () => convertRequest(request.id, { assignedTeamCode: assignment.assignedTeamCode })); }} className="rounded-lg bg-ink px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">{requestAction === `${request.id}:wo` ? "Creating..." : request.workOrder ? "WO Created" : "Create WO"}</button>}
+                        {isSupervisorView && permissions.approveRequests && <button type="button" disabled={requestAction === `${request.id}:reject`} onClick={(event) => { event.stopPropagation(); runRequestAction(`${request.id}:reject`, request, () => updateRequest(request.id, requestFormData(request, "REJECTED", "Rejected by supervisor/helpdesk", { assignedTeamCode: assignment.assignedTeamCode }))); }} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">{requestAction === `${request.id}:reject` ? "Saving..." : "Reject"}</button>}
+                        {isSupervisorView && permissions.manageRequests && <button type="button" disabled={requestAction === `${request.id}:delete`} onClick={(event) => { event.stopPropagation(); runRequestAction(`${request.id}:delete`, request, () => deleteRequest(request.id)); }} className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">{requestAction === `${request.id}:delete` ? "Deleting..." : "Delete"}</button>}
+                      </div>
+                      {isSupervisorView && permissions.manageRequests && (
+                        <select
+                          value={assignment.assignedTeamCode}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => setAssignment(request.id, { assignedTeamCode: event.target.value, assignedToEmail: "" })}
+                          className="mt-2 h-10 min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-lagoon"
+                        >
+                          <option value="">Assign service team</option>
+                          {teams.map((team) => <option key={team.id} value={team.code}>{team.code} - {team.name}</option>)}
+                        </select>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3">
+          <PaginationControls page={currentPage} totalPages={totalPages} onPageChange={setPage} totalItems={filteredRequests.length} />
+        </div>
+
+        {selectedRequest && (
+          <div className="mt-5">
+            <DetailPanel
+              title={`Selected Request: ${selectedRequest.ticketNo}`}
+              rows={[
+                ["Title", selectedRequest.title],
+                ["Status", selectedRequest.status],
+                ["Priority", selectedRequest.priority],
+                ["Category", selectedRequest.category],
+                ["Department", selectedRequest.departmentCode],
+                ["Service", selectedRequest.serviceCode],
+                ["Team", selectedRequest.assignedTeamCode],
+                ["Supervisor", selectedRequest.assignedSupervisorEmail],
+                ["Requester", selectedRequest.requester],
+                ["Location", selectedRequest.location],
+                ["Description", selectedRequest.description],
+                ["Attachments", selectedRequest.attachmentUrls],
+                ["Reject Reason", selectedRequest.rejectionReason],
+                ["Linked Work Order", selectedRequest.workOrder?.woNo],
+              ]}
+            />
+          </div>
+        )}
+      </Panel>
+      {permissions.manageRequests && createOpen && (
+        <RequestModalShell title="New Request" onClose={() => setCreateOpen(false)}>
+          <ServiceRequestForm
+            title=""
+            services={services}
+            categories={assetCategories}
+            departments={departments}
+            teams={teams}
+            locations={locations}
+            onSubmit={async (formData) => {
+              await submitRequest(formData);
+              setCreateOpen(false);
+            }}
+            saving={saving}
+            mode="modal"
+          />
+        </RequestModalShell>
+      )}
+      {editing && permissions.manageRequests && (
+        <RequestModalShell title={`Edit ${editing.ticketNo}`} onClose={() => setEditing(null)}>
+          <ServiceRequestForm
+            title=""
+            request={editing}
+            services={services}
+            categories={assetCategories}
+            departments={departments}
+            teams={teams}
+            locations={locations}
+            onSubmit={async (formData) => {
+              await updateRequest(editing.id, formData);
+              setEditing(null);
+            }}
+            saving={saving}
+            mode="modal"
+          />
+        </RequestModalShell>
+      )}
+      {previewRequest && (
+        <RequestPreviewModal
+          request={previewRequest}
+          assets={assets}
+          teams={teams}
+          assignment={assignmentFor(previewRequest)}
+          canManage={isSupervisorView && permissions.manageRequests}
+          canApprove={isSupervisorView && permissions.approveRequests}
+          savingKey={requestAction}
+          onClose={() => setPreviewRequest(null)}
+          onEdit={() => {
+            setPreviewRequest(null);
+            setEditing(previewRequest);
+          }}
+          onAssignTeam={(value) => setAssignment(previewRequest.id, { assignedTeamCode: value, assignedToEmail: "" })}
+          onAssignAsset={(value) => setAssignment(previewRequest.id, { assetTag: value })}
+          onReview={async () => {
+            await runRequestAction(`${previewRequest.id}:review`, previewRequest, () => updateRequest(previewRequest.id, requestFormData(previewRequest, "TRIAGED", "", { assignedTeamCode: assignmentFor(previewRequest).assignedTeamCode })));
+            setPreviewRequest((current: any) => current ? { ...current, status: "TRIAGED", reviewedAt: new Date().toISOString(), assignedTeamCode: assignmentFor(previewRequest).assignedTeamCode } : current);
+          }}
+          onCreateWorkOrder={async () => {
+            await runRequestAction(`${previewRequest.id}:wo`, previewRequest, () => convertRequest(previewRequest.id, { assignedTeamCode: assignmentFor(previewRequest).assignedTeamCode, assetTag: assignmentFor(previewRequest).assetTag }));
+            setPreviewRequest(null);
+          }}
+          onReject={() => runRequestAction(`${previewRequest.id}:reject`, previewRequest, () => updateRequest(previewRequest.id, requestFormData(previewRequest, "REJECTED", "Rejected by supervisor/helpdesk", { assignedTeamCode: assignmentFor(previewRequest).assignedTeamCode })))}
+        />
+      )}
+    </section>
+  );
+}
+
+function requestFormData(request: any, status: string, rejectionReason = "", overrides: Record<string, string> = {}) {
+  const formData = new FormData();
+  formData.set("title", request.title ?? "");
+  formData.set("category", request.category ?? "General");
+  formData.set("departmentCode", request.departmentCode ?? "");
+  formData.set("serviceCode", request.serviceCode ?? "");
+  formData.set("assignedTeamCode", overrides.assignedTeamCode ?? request.assignedTeamCode ?? "");
+  formData.set("requester", request.requester ?? "Requester");
+  formData.set("priority", request.priority ?? "MEDIUM");
+  formData.set("status", status);
+  formData.set("location", request.location ?? "Unassigned");
+  formData.set("attachmentUrls", request.attachmentUrls ?? "");
+  formData.set("rejectionReason", rejectionReason || request.rejectionReason || "");
+  formData.set("description", request.description ?? request.title ?? "Request reviewed.");
+  return formData;
+}
+
+function ServiceRequestForm({ title, request, services, categories, departments, teams, locations, onSubmit, saving, mode = "panel" }: { title: string; request?: any; services: any[]; categories: any[]; departments: any[]; teams: any[]; locations: any[]; onSubmit: (formData: FormData) => void; saving: boolean; mode?: "panel" | "modal" }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    if (!request) form.reset();
+  }
+
+  const locationOptions = locations.map((location) => `${location.site} / ${location.building} / ${location.floor} / ${location.room}`);
+  const formClass = mode === "modal" ? "" : "rounded-lg border border-white/80 bg-white p-5 shadow-lift";
+  const [priority, setPriority] = useState(request?.priority ?? "MEDIUM");
+  const [categoryValue, setCategoryValue] = useState(request?.category ?? "");
+  const [showCategoryCreate, setShowCategoryCreate] = useState(false);
+  const [categoryName, setCategoryName] = useState("");
+  const [categoryCode, setCategoryCode] = useState("");
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [localCategories, setLocalCategories] = useState<any[]>(categories);
+  const categoryOptions = Array.from(new Set([
+    ...localCategories.map((category) => category.name || category.code).filter(Boolean),
+    ...services.map((service) => service.category).filter(Boolean),
+  ]));
+  const priorities = [
+    { value: "LOW", label: "Low", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    { value: "MEDIUM", label: "Medium", tone: "bg-amber-50 text-amber-700 border-amber-200" },
+    { value: "HIGH", label: "High", tone: "bg-orange-50 text-orange-700 border-orange-200" },
+    { value: "CRITICAL", label: "Critical", tone: "bg-rose-50 text-rose-700 border-rose-200" },
+  ];
+  async function createCategory() {
+    const name = categoryName.trim();
+    if (!name) return;
+    setCategorySaving(true);
+    const response = await fetch("/api/asset-categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: categoryCode.trim(), name, type: "Service Request", defaultLifeYrs: 5, description: `Request category ${name}` }),
+    });
+    const result = await response.json();
+    if (response.ok) {
+      setLocalCategories((current) => [...current.filter((item) => item.code !== result.code), result]);
+      setCategoryValue(result.name);
+      setCategoryName("");
+      setCategoryCode("");
+      setShowCategoryCreate(false);
+    }
+    setCategorySaving(false);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={formClass}>
+      {title ? <h3 className="text-xl font-black">{title}</h3> : null}
+      <div className={`${title ? "mt-4" : ""} grid gap-4`}>
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm font-bold text-slate-500">
+          Upload images or files by drag and drop, or paste links below.
+        </div>
+        <input name="title" defaultValue={request?.title ?? ""} placeholder="Title" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <label className="grid gap-2 text-sm font-bold text-slate-600">
+          Description
+          <textarea name="description" defaultValue={request?.description ?? ""} placeholder="Describe the issue" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        </label>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-3">
+          <span className="text-sm font-black text-slate-600">Priority</span>
+          {priorities.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => setPriority(item.value)}
+              className={`rounded-lg border px-3 py-2 text-xs font-black ${priority === item.value ? item.tone : "border-slate-200 bg-white text-slate-500"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <input type="hidden" name="priority" value={priority} />
+        <select name="location" defaultValue={request?.location ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Location</option>
+          {locationOptions.map((location) => <option key={location}>{location}</option>)}
+        </select>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2">
+          <select name="category" value={categoryValue} onChange={(event) => setCategoryValue(event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option value="">Category</option>
+            {categoryOptions.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+          <button type="button" onClick={() => setShowCategoryCreate((current) => !current)} className="h-9 rounded-lg border border-lagoon/30 bg-lagoon/5 px-3 text-xs font-black text-lagoon">
+            {showCategoryCreate ? "Close Category Form" : "+ Add Category"}
+          </button>
+          {showCategoryCreate && (
+            <div className="grid gap-2 rounded-lg bg-slate-50 p-3">
+              <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="New category name" className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+              <input value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} placeholder="Category code optional" className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+              <button type="button" disabled={categorySaving || !categoryName.trim()} onClick={createCategory} className="h-10 rounded-lg bg-ink text-sm font-black text-white disabled:bg-slate-400">{categorySaving ? "Saving..." : "Save Category"}</button>
+            </div>
+          )}
+          </div>
+          <input name="requester" defaultValue={request?.requester ?? ""} placeholder="Created by / requester" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <select name="departmentCode" defaultValue={request?.departmentCode ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option value="">Department</option>
+            {departments.map((department) => <option key={department.id} value={department.code}>{department.code} - {department.name}</option>)}
+          </select>
+          <select name="serviceCode" defaultValue={request?.serviceCode ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option value="">Service</option>
+            {services.map((service) => <option key={service.id} value={service.code}>{service.code} - {service.name}</option>)}
+          </select>
+        </div>
+        {request && (
+          <select name="status" defaultValue={request.status} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option>NEW</option><option>TRIAGED</option><option>APPROVED</option><option>REJECTED</option><option>ASSIGNED</option><option>CLOSED</option>
+          </select>
+        )}
+        {!request && <input type="hidden" name="status" value="NEW" />}
+        <input type="hidden" name="assignedTeamCode" value={request?.assignedTeamCode ?? ""} />
+        <ImageUploadField name="attachmentUrls" defaultValue={request?.attachmentUrls ?? ""} />
+        {request && <textarea name="rejectionReason" defaultValue={request?.rejectionReason ?? ""} placeholder="Reject / close reason" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />}
+        <div className="flex justify-end gap-3">
+          <button type="submit" disabled={saving} className="h-11 rounded-lg bg-ink px-5 font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Save"}</button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function RequestModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/45 p-4 pt-20 backdrop-blur-sm">
+      <div className="max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between bg-ink px-4 py-3 text-white">
+          <h3 className="text-sm font-black">{title}</h3>
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-cyan-400 px-3 py-2 text-xs font-black text-cyan-300">Cancel</button>
+          </div>
+        </div>
+        <div className="max-h-[calc(86vh-56px)] overflow-auto p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function RequestPreviewModal({
+  request,
+  assets,
+  teams,
+  assignment,
+  canManage,
+  canApprove,
+  savingKey,
+  onClose,
+  onEdit,
+  onAssignTeam,
+  onAssignAsset,
+  onReview,
+  onCreateWorkOrder,
+  onReject,
+}: {
+  request: any;
+  assets: any[];
+  teams: any[];
+  assignment: { assignedTeamCode: string; assignedToEmail: string; assetTag: string };
+  canManage: boolean;
+  canApprove: boolean;
+  savingKey: string | null;
+  onClose: () => void;
+  onEdit: () => void;
+  onAssignTeam: (value: string) => void;
+  onAssignAsset: (value: string) => void;
+  onReview: () => Promise<void> | void;
+  onCreateWorkOrder: () => Promise<void> | void;
+  onReject: () => Promise<void> | void;
+}) {
+  const images = attachmentList(request.attachmentUrls);
+  const reviewedStatuses = ["TRIAGED", "APPROVED"];
+  const isReviewed = reviewedStatuses.includes(request.status) || Boolean(request.workOrder);
+  const canCreateWorkOrder = canManage && isReviewed && !request.workOrder;
+  const [localAssets, setLocalAssets] = useState<any[]>(assets);
+  const [showAssetCreate, setShowAssetCreate] = useState(false);
+  const [assetSaving, setAssetSaving] = useState(false);
+  const [assetName, setAssetName] = useState("");
+  const [assetTag, setAssetTag] = useState("");
+  const requestText = `${request.location || ""} ${request.departmentCode || ""} ${request.category || ""}`.toLowerCase();
+  const relatedAssets = localAssets.filter((asset) => {
+    const departmentMatch = !request.departmentCode || asset.departmentCode === request.departmentCode || asset.assignedTeamCode === request.assignedTeamCode || asset.assignedTeamCode === assignment.assignedTeamCode;
+    const locationText = `${asset.siteCode || asset.site?.name || ""} ${asset.buildingCode || asset.building?.name || ""} ${asset.floor || ""} ${asset.room || ""}`.toLowerCase();
+    const locationMatch = !request.location || requestText.includes(String(asset.room || "").toLowerCase()) || requestText.includes(String(asset.floor || "").toLowerCase()) || requestText.includes(String(asset.buildingCode || "").toLowerCase()) || locationText.split(/\s+/).some((token) => token.length > 2 && requestText.includes(token));
+    return departmentMatch || locationMatch;
+  });
+  const assetOptions = relatedAssets.length ? relatedAssets : localAssets;
+  const selectedAsset = localAssets.find((asset) => asset.tag === assignment.assetTag);
+  const locationParts = String(request.location || "").split("/").map((part) => part.trim()).filter(Boolean);
+
+  async function createAssetForRequest() {
+    const name = assetName.trim() || request.title || "Request Asset";
+    const tag = assetTag.trim() || `REQ-${request.ticketNo || Date.now()}`;
+    setAssetSaving(true);
+    const response = await fetch("/api/assets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tag,
+        name,
+        assetDescription: name,
+        additionalDescription: request.description || "",
+        category: request.category || "General",
+        assetGroup: request.category || "General",
+        system: request.serviceCode || request.category || "General",
+        criticality: request.priority || "MEDIUM",
+        status: "ACTIVE",
+        serialNumber: tag,
+        manufacturer: "Unknown",
+        model: "Request-created asset",
+        purchaseCost: 0,
+        salvageValue: 0,
+        conditionScore: 80,
+        departmentCode: request.departmentCode || assignment.assignedTeamCode || "",
+        assignedTeamCode: assignment.assignedTeamCode || request.assignedTeamCode || "",
+        assignedSupervisorEmail: request.assignedSupervisorEmail || "",
+        siteCode: locationParts[0] || "",
+        buildingCode: locationParts[1] || "",
+        floor: locationParts[2] || "",
+        room: locationParts[3] || request.location || "",
+        remarks: `Created by supervisor from service request ${request.ticketNo}.`,
+      }),
+    });
+    const result = await response.json();
+    if (response.ok) {
+      const created = { ...result, site: { name: result.siteCode }, building: { name: result.buildingCode, code: result.buildingCode } };
+      setLocalAssets((current) => [created, ...current.filter((asset) => asset.tag !== created.tag)]);
+      onAssignAsset(created.tag);
+      if (created.assignedTeamCode && !assignment.assignedTeamCode) onAssignTeam(created.assignedTeamCode);
+      setAssetName("");
+      setAssetTag("");
+      setShowAssetCreate(false);
+    }
+    setAssetSaving(false);
+  }
+
+  return (
+    <RequestModalShell title={`Request Preview: ${request.ticketNo}`} onClose={onClose}>
+      <div className="grid gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-2xl font-black">{request.title}</h3>
+            <p className="mt-1 text-sm font-bold text-slate-500">{request.ticketNo} / {request.requester || "Requester"}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <RequestStatusBadge status={request.status} />
+            <RequestPriorityBadge priority={request.priority} />
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <PreviewField label="Category" value={request.category} />
+          <PreviewField label="Department" value={request.departmentCode} />
+          <PreviewField label="Service" value={request.serviceCode} />
+          <PreviewField label="Location" value={request.location} />
+          <PreviewField label="Created" value={formatDateCell(request.createdAt)} />
+          <PreviewField label="Needed by" value={formatDateCell(request.dueAt)} />
+          <PreviewField label="Supervisor" value={request.assignedSupervisorEmail} />
+          <PreviewField label="Linked Work Order" value={request.workOrder?.woNo} />
+        </div>
+
+        <div className="rounded-lg bg-slate-50 p-4">
+          <p className="text-xs font-black uppercase text-slate-500">Description</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm font-bold text-slate-700">{request.description || "-"}</p>
+        </div>
+
+        <div>
+          <p className="mb-2 text-xs font-black uppercase text-slate-500">Images / Attachments</p>
+          {images.length ? (
+            <div className="grid gap-3 md:grid-cols-3">
+              {images.map((url) => (
+                <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  {isImageUrl(url) ? <img src={url} alt="Request attachment" className="h-36 w-full object-cover" /> : <span className="block p-3 text-sm font-bold text-lagoon">{url}</span>}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-500">No images attached.</p>
+          )}
+        </div>
+
+        {canManage && (
+          <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3">
+            <label className="grid gap-2 text-sm font-black text-slate-600">
+              Step 2: select related asset for this request
+              <select
+                value={assignment.assetTag}
+                onChange={(event) => {
+                  const tag = event.target.value;
+                  const asset = assets.find((item) => item.tag === tag);
+                  onAssignAsset(tag);
+                  if (asset?.assignedTeamCode && !assignment.assignedTeamCode) onAssignTeam(asset.assignedTeamCode);
+                }}
+                disabled={!isReviewed}
+                className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-lagoon"
+              >
+                <option value="">Select asset by department / location</option>
+                {assetOptions.map((asset) => (
+                  <option key={asset.id} value={asset.tag}>
+                    {asset.tag} - {asset.assetDescription || asset.name} / {[asset.buildingCode || asset.building?.name, asset.floor, asset.room].filter(Boolean).join(" > ") || "No location"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" disabled={!isReviewed} onClick={() => setShowAssetCreate((current) => !current)} className="h-10 rounded-lg border border-lagoon/30 bg-lagoon/5 px-3 text-xs font-black text-lagoon disabled:opacity-50">
+              {showAssetCreate ? "Close Add Asset" : "+ Add Asset for this Request"}
+            </button>
+            {showAssetCreate && (
+              <div className="grid gap-2 rounded-lg bg-slate-50 p-3">
+                <input value={assetName} onChange={(event) => setAssetName(event.target.value)} placeholder="Asset name" className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+                <input value={assetTag} onChange={(event) => setAssetTag(event.target.value)} placeholder={`Asset code optional, default REQ-${request.ticketNo}`} className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+                <div className="grid gap-1 rounded-lg bg-white p-3 text-xs font-bold text-slate-500">
+                  <span>Department: {request.departmentCode || "-"}</span>
+                  <span>Team: {assignment.assignedTeamCode || request.assignedTeamCode || "-"}</span>
+                  <span>Location: {request.location || "-"}</span>
+                  <span>Category: {request.category || "General"}</span>
+                </div>
+                <button type="button" disabled={assetSaving} onClick={createAssetForRequest} className="h-10 rounded-lg bg-ink text-sm font-black text-white disabled:bg-slate-400">{assetSaving ? "Saving..." : "Save Asset and Select"}</button>
+              </div>
+            )}
+            {selectedAsset && (
+              <div className="grid gap-2 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600 md:grid-cols-2">
+                <span>Asset type: {selectedAsset.assetGroup || selectedAsset.category || "-"}</span>
+                <span>Department: {selectedAsset.departmentCode || "-"}</span>
+                <span>Assigned team: {selectedAsset.assignedTeamCode || "-"}</span>
+                <span>Location: {[selectedAsset.buildingCode || selectedAsset.building?.name, selectedAsset.floor, selectedAsset.room].filter(Boolean).join(" > ") || "-"}</span>
+              </div>
+            )}
+            <label className="grid gap-2 text-sm font-black text-slate-600">
+              Step 3: assign service team before creating work order
+              <select
+                value={assignment.assignedTeamCode}
+                onChange={(event) => onAssignTeam(event.target.value)}
+                disabled={!isReviewed}
+                className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-lagoon"
+              >
+                <option value="">Assign service team</option>
+                {teams.map((team) => <option key={team.id} value={team.code}>{team.code} - {team.name}</option>)}
+              </select>
+              {!isReviewed && <span className="text-xs font-bold text-amber-700">First change status to Reviewed, then select asset/team and create work order.</span>}
+            </label>
+          </div>
+        )}
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-black uppercase text-slate-500">Workflow</p>
+          <div className="mt-2 grid gap-2 md:grid-cols-4">
+            <div className={`rounded-lg p-3 text-sm font-black ${isReviewed ? "bg-emerald-50 text-emerald-700" : "bg-white text-slate-700"}`}>1. Change status to Reviewed</div>
+            <div className={`rounded-lg p-3 text-sm font-black ${isReviewed ? "bg-white text-slate-700" : "bg-slate-100 text-slate-400"}`}>2. Select asset / location</div>
+            <div className={`rounded-lg p-3 text-sm font-black ${isReviewed ? "bg-white text-slate-700" : "bg-slate-100 text-slate-400"}`}>3. Assign service team</div>
+            <div className={`rounded-lg p-3 text-sm font-black ${canCreateWorkOrder ? "bg-white text-slate-700" : "bg-slate-100 text-slate-400"}`}>4. Create Work Order</div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
+          {canManage && <button type="button" onClick={onEdit} className="rounded-lg bg-lagoon px-4 py-3 text-sm font-black text-white">Edit</button>}
+          {canApprove && <button type="button" disabled={isReviewed || savingKey === `${request.id}:review`} onClick={onReview} className="rounded-lg bg-slate-700 px-4 py-3 text-sm font-black text-white disabled:bg-slate-400">{savingKey === `${request.id}:review` ? "Saving..." : isReviewed ? "Status Reviewed" : "Change Status to Reviewed"}</button>}
+          {canManage && <button type="button" disabled={!canCreateWorkOrder || savingKey === `${request.id}:wo`} onClick={onCreateWorkOrder} className="rounded-lg bg-ink px-4 py-3 text-sm font-black text-white disabled:bg-slate-400">{savingKey === `${request.id}:wo` ? "Creating..." : request.workOrder ? "WO Created" : isReviewed ? "Create Work Order" : "Create Work Order Locked"}</button>}
+          {canApprove && <button type="button" disabled={savingKey === `${request.id}:reject`} onClick={onReject} className="rounded-lg bg-amber-600 px-4 py-3 text-sm font-black text-white disabled:bg-slate-400">Reject</button>}
+        </div>
+      </div>
+    </RequestModalShell>
+  );
+}
+
+function WorkOrderPreviewModal({
+  work,
+  inventory,
+  onClose,
+  onStatusChange,
+  onPatch,
+  onEdit,
+  onCloseWork,
+  onReopenWork,
+}: {
+  work: any;
+  inventory: any[];
+  onClose: () => void;
+  onStatusChange?: (status: string) => Promise<void> | void;
+  onPatch?: (body: Record<string, string>) => Promise<void> | void;
+  onEdit?: () => void;
+  onCloseWork?: () => void;
+  onReopenWork?: () => void;
+}) {
+  const attachments = [...attachmentList(work.photoUrls), ...attachmentList(work.request?.attachmentUrls)];
+  const images = attachments.filter(isImageUrl);
+  const files = attachments.filter((item) => !isImageUrl(item));
+  const [activeImage, setActiveImage] = useState(images[0] ?? "");
+  const [zoom, setZoom] = useState(1);
+  const [quickForm, setQuickForm] = useState<"" | "procedure" | "part">("");
+  const [quickValue, setQuickValue] = useState("");
+  const [quickPartSku, setQuickPartSku] = useState("");
+  const [quickPartQty, setQuickPartQty] = useState(1);
+  const [tab, setTab] = useState<"comments" | "history">("comments");
+  const timelineRows: [string, unknown][] = [
+    ["Created", work.createdAt],
+    ["Assigned / Planned", work.plannedStart],
+    ["First Response", work.responseAt],
+    ["Completed by Team", work.resolutionAt],
+    ["Supervisor Review", work.verifiedAt],
+    ["Closed", work.finishedAt],
+    ["Last Updated", work.updatedAt],
+  ];
+  const checklist = checklistItems(work.jobPlan || work.request?.description || work.title);
+  const historyRows = [
+    ["Created", work.createdAt, `Work order ${work.woNo} was created.`],
+    ["Status", work.responseAt, `Moved to ${work.status?.replaceAll("_", " ") || "Open"}.`],
+    ["Completed when", work.resolutionAt, "Service team submitted completion for supervisor review."],
+    ["Closed", work.finishedAt, work.supervisorDecision || "Final supervisor review pending."],
+  ].filter(([, date]) => Boolean(date));
+
+  async function saveQuick(kind: "procedure" | "part") {
+    const value = quickValue.trim();
+    if (!value) return;
+    if (kind === "procedure") await onPatch?.({ jobPlan: [work.jobPlan, value].filter(Boolean).join("\n") });
+    if (kind === "part") await onPatch?.({ inventoryUsed: [work.inventoryUsed, value].filter(Boolean).join("\n") });
+    setQuickValue("");
+    setQuickForm("");
+  }
+
+  async function saveSelectedPart() {
+    if (!quickPartSku) return;
+    await onPatch?.({ inventoryUsed: [work.inventoryUsed, `${quickPartSku}:${quickPartQty}`].filter(Boolean).join("\n") });
+    setQuickPartSku("");
+    setQuickPartQty(1);
+    setQuickForm("");
+  }
+
+  return (
+    <RequestModalShell title={`Work Order Preview: ${work.woNo}`} onClose={onClose}>
+      <div className="grid gap-5">
+        <div className="sticky top-0 z-10 -mx-5 -mt-5 border-b border-slate-200 bg-white px-5 py-3 shadow-sm">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+            <button type="button" disabled={!onStatusChange || work.status === "CLOSED"} onClick={() => onStatusChange?.("ASSIGNED")} className={`rounded-lg border px-3 py-3 text-xs font-black ${["OPEN", "NEW", "ASSIGNED", "REOPENED"].includes(work.status) ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}>Open</button>
+            <button type="button" disabled={!onStatusChange || work.status === "CLOSED"} onClick={() => onStatusChange?.("ON_HOLD")} className={`rounded-lg border px-3 py-3 text-xs font-black ${work.status === "ON_HOLD" ? "border-amber-400 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}>On Hold</button>
+            <button type="button" disabled={!onStatusChange || work.status === "CLOSED"} onClick={() => onStatusChange?.("IN_PROGRESS")} className={`rounded-lg border px-3 py-3 text-xs font-black ${work.status === "IN_PROGRESS" ? "border-emerald-400 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}>In Progress</button>
+            <button type="button" disabled={!onStatusChange || work.status === "CLOSED"} onClick={() => onStatusChange?.("COMPLETED")} className={`rounded-lg border px-3 py-3 text-xs font-black ${work.status === "PENDING_SUPERVISOR_REVIEW" ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}>In Review</button>
+            <button type="button" disabled={!onStatusChange || work.status === "CLOSED"} onClick={() => onStatusChange?.("COMPLETED")} className={`rounded-lg border px-3 py-3 text-xs font-black ${["COMPLETED", "CLOSED"].includes(work.status) ? "border-emerald-400 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"} disabled:opacity-50`}>Completed</button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-2xl font-black">{work.title}</h3>
+            <p className="mt-1 text-sm font-bold text-slate-500">{work.woNo} / Linked request {work.request?.ticketNo || "-"}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <WorkOrderStatusBadge status={work.status} />
+            <RequestPriorityBadge priority={work.priority} />
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <PreviewField label="Department" value={work.departmentCode} />
+          <PreviewField label="Location" value={work.request?.location || work.asset?.location || work.asset?.buildingCode || work.location} />
+          <PreviewField label="Category / Service" value={work.serviceCode || work.type || work.request?.category} />
+          <PreviewField label="Assigned Team" value={work.assignedTeamCode} />
+          <PreviewField label="Assigned Member" value={work.assignedTo?.name || work.assignedTo?.email} />
+          <PreviewField label="Due Date" value={formatDateCell(work.dueAt)} />
+          <PreviewField label="Asset" value={work.asset?.tag || work.assetTag} />
+          <PreviewField label="Work Type" value={work.type} />
+          <PreviewField label="Schedule" value={work.jobPlanCode || work.frequency || work.plannedStart} />
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-xs font-black uppercase text-slate-500">Request Details</p>
+            <p className="mt-2 text-sm font-black text-slate-700">{work.request?.title || work.title}</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm font-bold text-slate-600">{work.request?.description || work.jobPlan || "-"}</p>
+            <p className="mt-3 text-xs font-black text-slate-500">Requester: {work.request?.requester || "-"}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-xs font-black uppercase text-slate-500">Service Team Updates</p>
+            <div className="mt-2 grid gap-2">
+              <PreviewField label="Work Notes" value={work.workNotes} />
+              <PreviewField label="Parts / Materials Requested" value={work.materialRequest} />
+              <PreviewField label="Assets Used" value={work.assetsUsed} />
+              <PreviewField label="Inventory Used" value={work.inventoryUsed} />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-black uppercase text-slate-500">Attachments & Image Gallery</p>
+              {activeImage && (
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black">Zoom -</button>
+                  <button type="button" onClick={() => setZoom((value) => Math.min(3, value + 0.25))} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black">Zoom +</button>
+                  <a href={activeImage} download className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Download</a>
+                </div>
+              )}
+            </div>
+            {activeImage ? (
+              <div className="mt-3 grid place-items-center overflow-auto rounded-lg bg-slate-950/90 p-4 scrollbar-thin">
+                <img src={activeImage} alt="Work order proof preview" style={{ transform: `scale(${zoom})` }} className="max-h-[420px] max-w-full origin-center rounded-lg object-contain transition-transform" />
+              </div>
+            ) : (
+              <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-500">No image proof uploaded.</p>
+            )}
+            {images.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2 md:grid-cols-5">
+                {images.map((url) => (
+                  <button key={url} type="button" onClick={() => { setActiveImage(url); setZoom(1); }} className={`overflow-hidden rounded-lg border ${activeImage === url ? "border-lagoon ring-2 ring-lagoon/20" : "border-slate-200"}`}>
+                    <img src={url} alt="Attachment thumbnail" className="h-20 w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {files.length > 0 && (
+              <div className="mt-3 grid gap-2">
+                {files.map((file) => (
+                  <div key={file} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3 text-sm font-bold">
+                    <span className="break-all">{file}</span>
+                    <a href={file} download className="text-lagoon">Download</a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-3">
+            <div className="rounded-lg bg-amber-50 p-4">
+              <p className="text-xs font-black uppercase text-amber-700">Supervisor Review</p>
+              <PreviewField label="Reopen Reason" value={work.rejectionReason} />
+              <div className="mt-2">
+                <PreviewField label="Closing / Review Remarks" value={work.supervisorDecision} />
+              </div>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase text-slate-500">Timeline</p>
+              <div className="mt-2 grid gap-2">
+                {timelineRows.map(([label, value]) => <PreviewField key={label} label={label} value={formatDateCell(value as string)} />)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-2 rounded-lg bg-slate-50 p-4 md:grid-cols-3">
+          {workTimingRows(work).map(([label, value]) => <PreviewField key={label} label={label} value={label.includes("Time") ? formatDateCell(value as string) : value} />)}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="font-black">Procedures & Checklist</h4>
+              <button type="button" onClick={() => setQuickForm(quickForm === "procedure" ? "" : "procedure")} disabled={!onPatch} className="rounded-lg border border-lagoon/30 px-3 py-2 text-xs font-black text-lagoon disabled:opacity-50">Add Procedure</button>
+            </div>
+            {quickForm === "procedure" && (
+              <div className="mt-3 flex gap-2">
+                <input value={quickValue} onChange={(event) => setQuickValue(event.target.value)} placeholder="Procedure / checklist step" className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+                <button type="button" onClick={() => saveQuick("procedure")} className="rounded-lg bg-lagoon px-4 text-sm font-black text-white">Save</button>
+              </div>
+            )}
+            <div className="mt-3 grid gap-2">
+              {checklist.map((item, index) => (
+                <label key={`${item}-${index}`} className="flex gap-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-700">
+                  <input type="checkbox" defaultChecked={["COMPLETED", "PENDING_SUPERVISOR_REVIEW", "CLOSED"].includes(work.status)} className="mt-1" />
+                  <span>{index + 1}. {item}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-3">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between"><h4 className="font-black">Time</h4><button type="button" onClick={() => onStatusChange?.("IN_PROGRESS")} disabled={!onStatusChange || work.status === "CLOSED"} className="rounded-lg border border-lagoon/30 px-3 py-2 text-xs font-black text-lagoon disabled:opacity-50">Start Timer</button></div>
+              <div className="mt-3 grid gap-2">
+                <PreviewField label="Response" value={minutesBetween(work.createdAt, work.responseAt)} />
+                <PreviewField label="Resolution" value={minutesBetween(work.responseAt, work.resolutionAt)} />
+                <PreviewField label="Finish" value={minutesBetween(work.resolutionAt, work.finishedAt)} />
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between"><h4 className="font-black">Parts</h4><button type="button" onClick={() => setQuickForm(quickForm === "part" ? "" : "part")} disabled={!onPatch} className="rounded-lg border border-lagoon/30 px-3 py-2 text-xs font-black text-lagoon disabled:opacity-50">Add Part</button></div>
+              {quickForm === "part" && (
+                <div className="mt-3 grid gap-2 md:grid-cols-[1fr_90px_auto]">
+                  <select value={quickPartSku} onChange={(event) => setQuickPartSku(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-lagoon">
+                    <option value="">Select part from stock</option>
+                    {inventory.map((item) => <option key={item.id ?? item.sku} value={item.sku}>{item.sku} - {item.name} ({item.onHand ?? 0} {item.unit ?? ""})</option>)}
+                  </select>
+                  <input value={quickPartQty} onChange={(event) => setQuickPartQty(Math.max(1, Number(event.target.value) || 1))} type="number" min={1} className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+                  <button type="button" onClick={saveSelectedPart} className="rounded-lg bg-lagoon px-4 text-sm font-black text-white">Save</button>
+                </div>
+              )}
+              <div className="mt-2 grid gap-1 text-sm font-bold text-slate-600">
+                {String(work.inventoryUsed || "").split(/\r?\n|,/).map((part) => part.trim()).filter(Boolean).map((part) => <span key={part} className="rounded-lg bg-slate-50 px-3 py-2">{part}</span>)}
+                {!work.inventoryUsed && <span>No parts added.</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex gap-6 border-b border-slate-200 text-sm font-black">
+            <button type="button" onClick={() => setTab("comments")} className={`px-2 pb-3 ${tab === "comments" ? "border-b-2 border-lagoon text-lagoon" : "text-slate-500"}`}>WO Comments</button>
+            <button type="button" onClick={() => setTab("history")} className={`px-2 pb-3 ${tab === "history" ? "border-b-2 border-lagoon text-lagoon" : "text-slate-500"}`}>History</button>
+          </div>
+          <div className="mt-4 grid gap-4">
+            {tab === "comments" ? (
+              <>
+                <p className="rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{work.workNotes || "No additional comments yet."}</p>
+                <p className="rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{work.supervisorRequest || work.materialRequest || "No material or supervisor requests."}</p>
+              </>
+            ) : (
+              <>
+                {historyRows.map(([label, date, note]) => (
+                  <div key={`${label}-${date}`} className="grid gap-1 rounded-lg bg-slate-50 p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-black text-lagoon">{label}</p>
+                      <p className="text-xs font-bold text-slate-500">{formatDateCell(date as string)}</p>
+                    </div>
+                    <p className="font-bold text-slate-700">{note}</p>
+                  </div>
+                ))}
+                <div className="grid gap-2 rounded-lg bg-slate-50 p-3 text-sm">
+                  <p className="font-black text-lagoon">Parts history</p>
+                  <p className="font-bold text-slate-700">{work.inventoryUsed || "No parts used yet."}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
+          {onEdit && <button type="button" onClick={onEdit} className="rounded-lg bg-lagoon px-4 py-3 text-sm font-black text-white">Edit</button>}
+          {onReopenWork && <button type="button" onClick={onReopenWork} className="rounded-lg bg-amber-600 px-4 py-3 text-sm font-black text-white">Reopen Work Order</button>}
+          {onCloseWork && <button type="button" onClick={onCloseWork} className="rounded-lg bg-ink px-4 py-3 text-sm font-black text-white">Close Work Order</button>}
+        </div>
+      </div>
+    </RequestModalShell>
+  );
+}
+
+function WorkOrderSupervisorReviewModal({
+  work,
+  action,
+  teams,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  work: any;
+  action: "close" | "reopen";
+  teams: any[];
+  saving: boolean;
+  onClose: () => void;
+  onSubmit: (formData: FormData) => Promise<void> | void;
+}) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+  }
+  const isReopen = action === "reopen";
+
+  return (
+    <RequestModalShell title={`${isReopen ? "Reopen" : "Close"} Work Order: ${work.woNo}`} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="grid gap-4">
+        <input type="hidden" name="status" value={isReopen ? "REOPENED" : "CLOSED"} />
+        <div className="rounded-lg bg-slate-50 p-4">
+          <p className="text-lg font-black">{work.title}</p>
+          <p className="mt-1 text-sm font-bold text-slate-500">{work.departmentCode || "-"} / {work.assignedTeamCode || "No team assigned"}</p>
+        </div>
+        {isReopen ? (
+          <>
+            <label className="grid gap-2 text-sm font-black text-slate-600">
+              Reopen Reason
+              <input name="rejectionReason" required placeholder="Why completion is rejected" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-slate-600">
+              Remarks / Instructions
+              <textarea name="supervisorDecision" required placeholder="Instructions for service team before resubmitting" className="min-h-28 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-slate-600">
+              Reassigned Service Team
+              <select name="assignedTeamCode" defaultValue={work.assignedTeamCode ?? ""} className="h-11 rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-lagoon">
+                <option value="">Keep unassigned</option>
+                {teams.map((team) => <option key={team.id} value={team.code}>{team.code} - {team.name}</option>)}
+              </select>
+            </label>
+          </>
+        ) : (
+          <label className="grid gap-2 text-sm font-black text-slate-600">
+            Final Remarks
+            <textarea name="supervisorDecision" placeholder="Final verification remarks. Closing time and supervisor are captured automatically." className="min-h-28 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+          </label>
+        )}
+        <button disabled={saving} className={`h-11 rounded-lg font-black text-white disabled:bg-slate-400 ${isReopen ? "bg-amber-600" : "bg-ink"}`}>
+          {saving ? "Saving..." : isReopen ? "Reopen Work Order" : "Close Work Order"}
+        </button>
+      </form>
+    </RequestModalShell>
+  );
+}
+
+function PreviewField({ label, value }: { label: string; value: unknown }) {
+  return (
+    <div className="rounded-lg bg-slate-50 p-3">
+      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-black text-slate-700">{String(value || "-")}</p>
+    </div>
+  );
+}
+
+function attachmentList(value: unknown) {
+  return String(value || "")
+    .split(/[\s,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isImageUrl(value: string) {
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(value) || value.startsWith("/uploads/");
+}
+
+function checklistItems(value: unknown) {
+  const items = String(value || "")
+    .split(/\r?\n|(?:^|\s)\d+[.)]\s+/)
+    .map((item) => item.replace(/^[-*]\s*/, "").trim())
+    .filter((item) => item.length > 3);
+  return items.length ? items.slice(0, 12) : [
+    "Check filters and replace if required",
+    "Check fan blades for dust buildup and clean if necessary",
+    "Check moving parts for cracks and excessive wear",
+    "Verify safety isolation and lockout requirements",
+    "Record completion notes, time, parts and proof photos",
+  ];
+}
+
+function RequestStatusBadge({ status }: { status: string }) {
+  const tone =
+    status === "CLOSED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+    status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
+    status === "APPROVED" ? "bg-cyan-50 text-cyan-700 border-cyan-200" :
+    "bg-amber-50 text-amber-700 border-amber-200";
+  return <span className={`rounded-full border px-2 py-1 text-xs font-black ${tone}`}>{status.replaceAll("_", " ")}</span>;
+}
+
+function RequestPriorityBadge({ priority }: { priority: string }) {
+  const tone =
+    priority === "CRITICAL" ? "text-rose-700" :
+    priority === "HIGH" ? "text-orange-700" :
+    priority === "MEDIUM" ? "text-amber-700" :
+    "text-emerald-700";
+  return <span className={`text-xs font-black uppercase ${tone}`}>{priority}</span>;
+}
+
+function formatDateCell(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function WorkOrderStatusBadge({ status }: { status: string }) {
+  const tone =
+    status === "CLOSED" || status === "VERIFIED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+    status === "IN_PROGRESS" || status === "ASSIGNED" ? "bg-cyan-50 text-cyan-700 border-cyan-200" :
+    status === "PENDING_SUPERVISOR_REVIEW" ? "bg-violet-50 text-violet-700 border-violet-200" :
+    status === "ON_HOLD" || status === "REOPENED" ? "bg-amber-50 text-amber-700 border-amber-200" :
+    status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
+    "bg-slate-50 text-slate-700 border-slate-200";
+  return <span className={`rounded-full border px-2 py-1 text-xs font-black ${tone}`}>{status?.replaceAll("_", " ") || "OPEN"}</span>;
+}
+
+function WorkOrderCalendar({ works, monthDate, setMonthDate, setSelectedWorkId }: { works: any[]; monthDate: Date; setMonthDate: (date: Date) => void; setSelectedWorkId: (id: string) => void }) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const first = new Date(year, month, 1);
+  const start = new Date(first);
+  start.setDate(first.getDate() - first.getDay());
+  const days = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+  const monthLabel = monthDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+  const worksByDay = works.reduce((acc: Record<string, any[]>, work) => {
+    const value = work.dueAt || work.plannedStart || work.createdAt;
+    if (!value) return acc;
+    const key = new Date(value).toISOString().slice(0, 10);
+    acc[key] = [...(acc[key] ?? []), work];
+    return acc;
+  }, {});
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setMonthDate(new Date(year, month - 1, 1))} className="h-9 rounded-lg border border-slate-200 px-3 text-lagoon">{"<"}</button>
+          <button type="button" onClick={() => setMonthDate(new Date(year, month + 1, 1))} className="h-9 rounded-lg border border-slate-200 px-3 text-lagoon">{">"}</button>
+          <h4 className="text-2xl font-black">{monthLabel}</h4>
+        </div>
+        <div className="flex rounded-lg border border-lagoon text-sm font-black text-lagoon">
+          <span className="px-3 py-2">Week</span>
+          <span className="bg-lagoon px-3 py-2 text-white">Month</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-100 text-center text-xs font-black">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="border-r border-slate-200 p-2 last:border-r-0">{day}</div>)}
+      </div>
+      <div className="grid grid-cols-7">
+        {days.map((day) => {
+          const key = day.toISOString().slice(0, 10);
+          const dayWorks = worksByDay[key] ?? [];
+          const inMonth = day.getMonth() === month;
+          const isToday = key === new Date().toISOString().slice(0, 10);
+          return (
+            <div key={key} className={`min-h-32 border-b border-r border-slate-200 p-2 last:border-r-0 ${inMonth ? "bg-white" : "bg-slate-100"} ${isToday ? "bg-lime-50" : ""}`}>
+              <div className={`mb-2 grid h-6 w-6 place-items-center rounded-full text-xs font-black ${isToday ? "bg-lime-400 text-ink" : "text-slate-500"}`}>{day.getDate()}</div>
+              <div className="grid gap-1">
+                {dayWorks.slice(0, 4).map((work) => (
+                  <button key={work.id} type="button" onClick={() => setSelectedWorkId(work.id)} className="truncate rounded bg-slate-50 px-2 py-1 text-left text-xs font-bold text-slate-700 hover:bg-lagoon/10">
+                    {work.title} <span className="text-coral">{work.priority === "CRITICAL" ? "!" : ""}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ImageUploadField({ name, defaultValue = "" }: { name: string; defaultValue?: string }) {
+  const [value, setValue] = useState(defaultValue);
+  const [uploading, setUploading] = useState(false);
+  const urls = value.split(/\s+/).map((item) => item.trim()).filter(Boolean);
+
+  async function upload(files: FileList | null) {
+    if (!files?.length) return;
+    const formData = new FormData();
+    Array.from(files).forEach((file) => formData.append("files", file));
+    setUploading(true);
+    const response = await fetch("/api/uploads", { method: "POST", body: formData });
+    const result = await response.json();
+    const next = [...urls, ...(result.urls ?? [])].join("\n");
+    setValue(next);
+    setUploading(false);
+  }
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
+      <input type="hidden" name={name} value={value} />
+      <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg bg-white p-4 text-center text-sm font-bold text-slate-600">
+        <Upload size={18} className="text-lagoon" />
+        {uploading ? "Uploading..." : "Upload images"}
+        <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => upload(event.target.files)} />
+      </label>
+      <textarea value={value} onChange={(event) => setValue(event.target.value)} placeholder="Uploaded image URLs" className="min-h-20 rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-lagoon" />
+      {urls.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {urls.slice(0, 6).map((url) => (
+            <img key={url} src={url} alt="Uploaded proof" className="h-20 w-full rounded-lg object-cover" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkOrderForm({ title, work, data, onSubmit, saving }: { title: string; work?: any; data: ConsoleData; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  const initialAssetTag = work?.asset?.tag ?? work?.assetTag ?? "";
+  const [selectedAssetTag, setSelectedAssetTag] = useState(initialAssetTag);
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    if (!work) form.reset();
+  }
+
+  const assetTypes = Array.from(new Set(data.assets.map((asset) => asset.assetGroup || asset.category).filter(Boolean)));
+  const selectedAsset = data.assets.find((asset) => asset.tag === selectedAssetTag);
+  const matchedService = selectedAsset ? data.services.find((service) => service.category === selectedAsset.category || service.category === selectedAsset.assetGroup || service.code === selectedAsset.serviceCode) : null;
+  const selectedLocation = selectedAsset ? [selectedAsset.siteCode || selectedAsset.site?.name, selectedAsset.buildingCode || selectedAsset.building?.name, selectedAsset.floor, selectedAsset.room].filter(Boolean).join(" > ") : "";
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">{title}</h3>
+      <div className="mt-4 grid gap-3">
+        <input name="title" defaultValue={work?.title ?? ""} placeholder="Title" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <input name="type" defaultValue={work?.type ?? ""} placeholder="Work type" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <select key={`asset-type-${selectedAssetTag}`} name="assetType" defaultValue={work?.assetType ?? selectedAsset?.assetGroup ?? selectedAsset?.category ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select asset type</option>
+          {assetTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+        </select>
+        <select name="assetTag" value={selectedAssetTag} onChange={(event) => setSelectedAssetTag(event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select asset</option>
+          {data.assets.map((asset) => <option key={asset.id} value={asset.tag}>{asset.tag} - {asset.assetDescription ?? asset.name}</option>)}
+        </select>
+        {selectedLocation && <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm font-bold text-slate-600">Asset location: {selectedLocation}</div>}
+        <select key={`dept-${selectedAssetTag}`} name="departmentCode" defaultValue={work?.departmentCode ?? selectedAsset?.departmentCode ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select department</option>
+          {data.departments.map((department) => <option key={department.id} value={department.code}>{department.code} - {department.name}</option>)}
+        </select>
+        <select key={`service-${selectedAssetTag}`} name="serviceCode" defaultValue={work?.serviceCode ?? matchedService?.code ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select service</option>
+          {data.services.map((service) => <option key={service.id} value={service.code}>{service.code} - {service.name}</option>)}
+        </select>
+        <select key={`team-${selectedAssetTag}`} name="assignedTeamCode" defaultValue={work?.assignedTeamCode ?? selectedAsset?.assignedTeamCode ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Assign service team</option>
+          {data.teams.map((team) => <option key={team.id} value={team.code}>{team.code} - {team.name}</option>)}
+        </select>
+        <select name="jobPlanCode" defaultValue={work?.jobPlanCode ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select job plan</option>
+          {data.jobPlans.map((plan) => <option key={plan.id} value={plan.code}>{plan.code} - {plan.name}</option>)}
+        </select>
+        <select name="priority" defaultValue={work?.priority ?? "MEDIUM"} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+        </select>
+        {work && <select name="status" defaultValue={work.status} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon"><option>PENDING_ASSIGNMENT</option><option>ASSIGNED</option><option>ACCEPTED</option><option>REJECTED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>COMPLETED</option><option>PENDING_SUPERVISOR_REVIEW</option><option>VERIFIED</option><option>REOPENED</option><option>CLOSED</option></select>}
+        <textarea key={`job-${selectedAssetTag}`} name="jobPlan" defaultValue={work?.jobPlan ?? (selectedAsset ? `Inspect ${selectedAsset.assetDescription || selectedAsset.name} at ${selectedLocation}. Review asset condition, diagnose issue, record parts used, update asset history and attach proof.` : "")} placeholder="Job plan / work steps" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <textarea name="safetyNotes" defaultValue={work?.safetyNotes ?? ""} placeholder="Safety notes" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <ImageUploadField name="photoUrls" defaultValue={work?.photoUrls ?? ""} />
+        {work && (
+          <div className="grid gap-3 rounded-lg bg-slate-50 p-3">
+            <p className="text-sm font-black text-slate-700">Team Member Update</p>
+            <input name="responseAt" type="datetime-local" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+            <input name="resolutionAt" type="datetime-local" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+            <input name="finishedAt" type="datetime-local" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+            <textarea name="assetsUsed" defaultValue={work.assetsUsed ?? ""} placeholder="Assets added or used" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            <PartsSelector inventory={data.inventory} defaultValue={work.inventoryUsed ?? ""} />
+            <textarea name="workNotes" defaultValue={work.workNotes ?? ""} placeholder="Work notes / execution log" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            <textarea name="materialRequest" defaultValue={work.materialRequest ?? ""} placeholder="Material request to supervisor" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            <textarea name="rejectionReason" defaultValue={work.rejectionReason ?? ""} placeholder="Technician reject reason, if rejected" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            <textarea name="supervisorRequest" defaultValue={work.supervisorRequest ?? ""} placeholder="Request from supervisor / support needed" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+          </div>
+        )}
+        {work && (
+          <div className="grid gap-3 rounded-lg bg-emerald-50 p-3">
+            <p className="text-sm font-black text-emerald-800">Supervisor Verification</p>
+            <textarea name="supervisorDecision" defaultValue={work.supervisorDecision ?? ""} placeholder="Approve, reject, reopen or reassign decision notes" className="min-h-20 rounded-lg border border-emerald-100 p-3 outline-none focus:border-lagoon" />
+          </div>
+        )}
+        {work && <input name="estimatedHours" type="number" defaultValue={work.estimatedHours ?? ""} placeholder="Estimated hours" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />}
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Save Work Order"}</button>
+      </div>
+    </form>
+  );
+}
+
+function PartsSelector({ inventory, defaultValue = "" }: { inventory: any[]; defaultValue?: string }) {
+  const parseDefault = () => String(defaultValue || "")
+    .split(/\r?\n|,/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [sku, qty] = line.split(":").map((part) => part.trim());
+      return { sku, quantity: Math.max(1, Number.parseInt(qty || "1", 10) || 1) };
+    });
+  const [rows, setRows] = useState(parseDefault);
+  const [sku, setSku] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const value = rows.map((row) => `${row.sku}:${row.quantity}`).join("\n");
+  const selectedItem = inventory.find((item) => item.sku === sku);
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
+      <input type="hidden" name="inventoryUsed" value={value} />
+      <p className="text-sm font-black text-slate-700">Parts Used</p>
+      <div className="grid gap-2 md:grid-cols-[1fr_120px_auto]">
+        <select value={sku} onChange={(event) => setSku(event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon">
+          <option value="">Select part from stock</option>
+          {inventory.map((item) => <option key={item.id ?? item.sku} value={item.sku}>{item.sku} - {item.name} ({item.onHand ?? 0} {item.unit ?? ""})</option>)}
+        </select>
+        <input type="number" min={1} value={quantity} onChange={(event) => setQuantity(Math.max(1, Number(event.target.value) || 1))} className="h-11 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+        <button
+          type="button"
+          onClick={() => {
+            if (!sku) return;
+            setRows((current) => {
+              const existing = current.find((row) => row.sku === sku);
+              if (existing) return current.map((row) => row.sku === sku ? { ...row, quantity: row.quantity + quantity } : row);
+              return [...current, { sku, quantity }];
+            });
+            setSku("");
+            setQuantity(1);
+          }}
+          className="h-11 rounded-lg bg-lagoon px-4 text-sm font-black text-white"
+        >
+          Add Part
+        </button>
+      </div>
+      {selectedItem && <p className="text-xs font-bold text-slate-500">Available stock: {selectedItem.onHand ?? 0} {selectedItem.unit ?? ""}</p>}
+      <div className="grid gap-2">
+        {rows.length ? rows.map((row) => {
+          const item = inventory.find((stock) => stock.sku === row.sku);
+          return (
+            <div key={row.sku} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+              <span className="font-bold">{row.sku} - {item?.name ?? "Part"}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-black">Qty {row.quantity}</span>
+                <button type="button" onClick={() => setRows((current) => current.filter((itemRow) => itemRow.sku !== row.sku))} className="text-xs font-black text-coral">Remove</button>
+              </div>
+            </div>
+          );
+        }) : <p className="text-xs font-bold text-slate-400">No parts selected.</p>}
+      </div>
+    </div>
+  );
+}
+
+function WorkExecutionForm({ work, inventory, onSubmit, saving }: { work: any; inventory: any[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">Update Assigned Work</h3>
+      <p className="mt-1 text-sm font-bold text-slate-500">{work.woNo} / {work.title}</p>
+      <div className="mt-4 grid gap-3">
+        <select name="status" defaultValue={work.status} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="ON_HOLD">On Hold</option>
+          <option value="COMPLETED">Completed - Submit for Supervisor Review</option>
+        </select>
+        <textarea name="workNotes" defaultValue={work.workNotes ?? ""} placeholder="Work description / notes" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <ImageUploadField name="photoUrls" defaultValue={work.photoUrls ?? ""} />
+        <textarea name="materialRequest" defaultValue={work.materialRequest ?? ""} placeholder="Parts request for supervisor approval" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <textarea name="assetsUsed" defaultValue={work.assetsUsed ?? ""} placeholder="Assets requested or used" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <PartsSelector inventory={inventory} defaultValue={work.inventoryUsed ?? ""} />
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Submit Update"}</button>
+      </div>
+    </form>
+  );
+}
+
+function Ppm({
+  ppms,
+  assets,
+  workOrders,
+  submitPpm,
+  updatePpm,
+  saving,
+}: {
+  ppms: any[];
+  assets: any[];
+  workOrders: any[];
+  submitPpm: (formData: FormData) => void;
+  updatePpm: (body: Record<string, unknown>) => Promise<void> | void;
+  saving: boolean;
+}) {
+  const [previewPpm, setPreviewPpm] = useState<any | null>(null);
+  const [view, setView] = useState<"list" | "calendar">("list");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const filtered = ppms.filter((ppm) => {
+    const asset = assets.find((item) => item.tag === ppm.assetTag);
+    const haystack = `${ppm.code} ${ppm.name} ${ppm.assetTag} ${ppm.frequency} ${ppm.checklist} ${asset?.assetGroup || ""}`.toLowerCase();
+    const queryMatch = !search || haystack.includes(search.toLowerCase());
+    const statusMatch = statusFilter === "All" || (statusFilter === "Active" ? ppm.active : !ppm.active);
+    return queryMatch && statusMatch;
+  });
+  const grouped = filtered.reduce((acc: Record<string, any[]>, ppm) => {
+    const key = ppm.nextDue ? new Date(ppm.nextDue).toISOString().slice(0, 10) : "Unscheduled";
+    acc[key] = [...(acc[key] ?? []), ppm];
+    return acc;
+  }, {});
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+      <Panel title="Preventive Maintenance Planner" icon={CalendarCheck}>
+        <ReportButtons type="ppm" label="PPM report" />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setView("list")} className={`h-10 rounded-lg px-4 text-sm font-black ${view === "list" ? "bg-lagoon text-white" : "bg-slate-50 text-slate-600"}`}>List</button>
+            <button type="button" onClick={() => setView("calendar")} className={`h-10 rounded-lg px-4 text-sm font-black ${view === "calendar" ? "bg-lagoon text-white" : "bg-slate-50 text-slate-600"}`}>Calendar</button>
+          </div>
+          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 lg:max-w-md">
+            <Search size={16} className="text-slate-400" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search PMs" className="h-11 w-full text-sm outline-none" />
+          </div>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="All">Status</option>
+            <option value="Active">Active</option>
+            <option value="Paused">Paused</option>
+          </select>
+        </div>
+        {view === "list" ? (
+          <div className="max-w-full overflow-auto rounded-lg border border-slate-200 scrollbar-thin">
+            <table className="min-w-[1100px] border-collapse bg-white text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-3">#</th><th className="px-3 py-3">Title</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Frequency</th><th className="px-3 py-3">Next Due</th><th className="px-3 py-3">Category</th><th className="px-3 py-3">Asset</th><th className="px-3 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((ppm, index) => {
+                  const asset = assets.find((item) => item.tag === ppm.assetTag);
+                  return (
+                    <tr key={ppm.id} onClick={() => setPreviewPpm(ppm)} className="cursor-pointer border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-3 py-3 font-black text-slate-500">{index + 1}</td>
+                      <td className="px-3 py-3"><p className="font-black">{ppm.name}</p><p className="text-xs font-bold text-slate-500">{ppm.code}</p></td>
+                      <td className="px-3 py-3"><span className={`rounded-full border px-2 py-1 text-xs font-black ${ppm.active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{ppm.active ? "Planned" : "Paused"}</span></td>
+                      <td className="px-3 py-3">{ppm.frequency}</td>
+                      <td className="px-3 py-3">{formatDateCell(ppm.nextDue)}</td>
+                      <td className="px-3 py-3">{asset?.assetGroup || asset?.category || "-"}</td>
+                      <td className="px-3 py-3 text-lagoon">{ppm.assetTag}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex gap-2">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); setPreviewPpm(ppm); }} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Preview</button>
+                          <button type="button" disabled={saving} onClick={(event) => { event.stopPropagation(); updatePpm({ id: ppm.id, active: !ppm.active }); }} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">{ppm.active ? "Pause" : "Activate"}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-3">
+            {Object.entries(grouped).map(([date, items]) => (
+              <div key={date} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="font-black text-lagoon">{date}</p>
+                <div className="mt-2 grid gap-2">
+                  {items.map((ppm) => (
+                    <button key={ppm.id} type="button" onClick={() => setPreviewPpm(ppm)} className="rounded-lg bg-white p-2 text-left text-sm hover:bg-lagoon/10">
+                      <p className="font-bold">{ppm.name}</p>
+                      <p className="text-slate-500">{ppm.assetTag} / {ppm.frequency}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+      <PpmCreateForm assets={assets} onSubmit={submitPpm} saving={saving} />
+      {previewPpm && (
+        <PmPreviewModal
+          ppm={previewPpm}
+          asset={assets.find((asset) => asset.tag === previewPpm.assetTag)}
+          workOrders={workOrders.filter((work) => work.asset?.tag === previewPpm.assetTag || work.assetTag === previewPpm.assetTag)}
+          saving={saving}
+          onClose={() => setPreviewPpm(null)}
+          onUpdate={(body) => {
+            setPreviewPpm((current: any) => current ? { ...current, ...body } : current);
+            return updatePpm({ id: previewPpm.id, ...body });
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+function PpmCreateForm({ assets, onSubmit, saving }: { assets: any[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  const [selectedAssetTag, setSelectedAssetTag] = useState("");
+  const selectedAsset = assets.find((asset) => asset.tag === selectedAssetTag);
+  const selectedLocation = selectedAsset ? [selectedAsset.siteCode || selectedAsset.site?.name, selectedAsset.buildingCode || selectedAsset.building?.name, selectedAsset.floor, selectedAsset.room].filter(Boolean).join(" > ") : "";
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    form.reset();
+    setSelectedAssetTag("");
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-sun/50 text-amber-700">
+          <CalendarCheck size={20} />
+        </div>
+        <h3 className="text-xl font-black">Create PPM</h3>
+      </div>
+      <div className="grid gap-3">
+        <input name="code" placeholder="PPM code" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <input name="name" placeholder="PPM title" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <select name="assetTag" value={selectedAssetTag} onChange={(event) => setSelectedAssetTag(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-lagoon">
+          <option value="">Select asset from register</option>
+          {assets.map((asset) => (
+            <option key={asset.id ?? asset.tag} value={asset.tag}>
+              {asset.tag} - {asset.assetDescription || asset.name} / {asset.assetGroup || asset.category || "Asset"}
+            </option>
+          ))}
+        </select>
+        {selectedAsset && (
+          <div className="grid gap-1 rounded-lg bg-slate-50 p-3 text-xs font-bold text-slate-600">
+            <span>Location: {selectedLocation || "-"}</span>
+            <span>Department: {selectedAsset.departmentCode || "-"}</span>
+            <span>Team: {selectedAsset.assignedTeamCode || "-"}</span>
+          </div>
+        )}
+        <select name="frequency" className="h-11 rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-lagoon">
+          <option value="">Select frequency</option>
+          <option>Daily</option>
+          <option>Weekly</option>
+          <option>Monthly</option>
+          <option>Quarterly</option>
+          <option>Semi Annual</option>
+          <option>Annual</option>
+        </select>
+        <input name="durationHrs" type="number" min={0} step="0.5" placeholder="Duration hours" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <textarea name="checklist" placeholder="Checklist / preventive maintenance procedure" className="min-h-28 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <button disabled={saving} className="mt-2 flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-4 font-black text-white disabled:cursor-not-allowed disabled:bg-slate-400">
+          <Plus size={18} />
+          {saving ? "Saving..." : "Submit"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function PmPreviewModal({
+  ppm,
+  asset,
+  workOrders,
+  saving,
+  onClose,
+  onUpdate,
+}: {
+  ppm: any;
+  asset?: any;
+  workOrders: any[];
+  saving: boolean;
+  onClose: () => void;
+  onUpdate: (body: Record<string, unknown>) => Promise<void> | void;
+}) {
+  const checklist = checklistItems(ppm.checklist);
+  const [tab, setTab] = useState<"comments" | "history">("history");
+  const [quickForm, setQuickForm] = useState<"" | "procedure" | "part">("");
+  const [quickValue, setQuickValue] = useState("");
+  const priority = ppm.durationHrs >= 8 ? "CRITICAL" : ppm.durationHrs >= 4 ? "HIGH" : "MEDIUM";
+  const historyData = workOrders.slice(0, 8).map((work) => ({
+    name: String(formatDateCell(work.createdAt)).slice(0, 10),
+    created: 1,
+    completed: ["CLOSED", "COMPLETED", "PENDING_SUPERVISOR_REVIEW"].includes(work.status) ? 1 : 0,
+  }));
+
+  async function savePpmQuick(kind: "procedure" | "part") {
+    const value = quickValue.trim();
+    if (!value) return;
+    const line = kind === "procedure" ? value : `Part: ${value}`;
+    await onUpdate({ checklist: [ppm.checklist, line].filter(Boolean).join("\n") });
+    setQuickValue("");
+    setQuickForm("");
+  }
+
+  return (
+    <RequestModalShell title={`PM | ${ppm.name}`} onClose={onClose}>
+      <div className="grid gap-5">
+        <div className="sticky top-0 z-10 -mx-5 -mt-5 border-b border-slate-200 bg-white px-5 py-3 shadow-sm">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <button type="button" disabled={saving} onClick={() => onUpdate({ active: true })} className={`rounded-lg border px-3 py-3 text-xs font-black ${ppm.active ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-600"}`}>Active</button>
+            <button type="button" disabled={saving} onClick={() => onUpdate({ active: true })} className="rounded-lg border border-lime-300 bg-lime-100 px-3 py-3 text-xs font-black text-lime-800">Planned</button>
+            <button type="button" disabled={saving} onClick={() => onUpdate({ active: false })} className={`rounded-lg border px-3 py-3 text-xs font-black ${!ppm.active ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-600"}`}>Paused</button>
+            <button type="button" disabled={saving} onClick={() => onUpdate({ nextDue: new Date().toISOString() })} className="rounded-lg border border-lagoon/30 px-3 py-3 text-xs font-black text-lagoon">Start Now</button>
+          </div>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black text-slate-500">{ppm.code} / Next due {formatDateCell(ppm.nextDue)}</p>
+            <h3 className="mt-1 text-2xl font-black">{ppm.name}</h3>
+            <p className="mt-2 max-w-3xl whitespace-pre-wrap text-sm font-bold text-slate-600">{ppm.checklist}</p>
+          </div>
+          <RequestPriorityBadge priority={priority} />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <PreviewField label="Starting From" value={formatDateCell(ppm.nextDue)} />
+          <PreviewField label="Progression" value={ppm.active ? "Active" : "Paused"} />
+          <PreviewField label="Time to Complete" value={`${ppm.durationHrs || 0} hrs`} />
+          <PreviewField label="Work Type" value="Preventive" />
+          <PreviewField label="Schedule" value={ppm.frequency} />
+          <PreviewField label="Asset" value={ppm.assetTag} />
+          <PreviewField label="Category" value={asset?.assetGroup || asset?.category} />
+          <PreviewField label="Location" value={[asset?.buildingCode, asset?.floor, asset?.room].filter(Boolean).join(" / ")} />
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="font-black">Procedures & Checklist</h4>
+            <button type="button" onClick={() => setQuickForm(quickForm === "procedure" ? "" : "procedure")} className="rounded-lg border border-lagoon/30 px-3 py-2 text-xs font-black text-lagoon">Add Procedure</button>
+          </div>
+          {quickForm === "procedure" && (
+            <div className="mt-3 flex gap-2">
+              <input value={quickValue} onChange={(event) => setQuickValue(event.target.value)} placeholder="Procedure / checklist step" className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+              <button type="button" onClick={() => savePpmQuick("procedure")} className="rounded-lg bg-lagoon px-4 text-sm font-black text-white">Save</button>
+            </div>
+          )}
+          <div className="mt-3 grid gap-2">
+            {checklist.map((item, index) => (
+              <label key={`${item}-${index}`} className="flex gap-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-700">
+                <input type="checkbox" className="mt-1" />
+                <span>{index + 1}. {item}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[0.7fr_1fr]">
+          <div className="grid gap-3">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between"><h4 className="font-black">Parts</h4><button type="button" onClick={() => setQuickForm(quickForm === "part" ? "" : "part")} className="rounded-lg border border-lagoon/30 px-3 py-2 text-xs font-black text-lagoon">Add Part</button></div>
+              {quickForm === "part" && (
+                <div className="mt-3 flex gap-2">
+                  <input value={quickValue} onChange={(event) => setQuickValue(event.target.value)} placeholder="Part name / quantity" className="h-10 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-lagoon" />
+                  <button type="button" onClick={() => savePpmQuick("part")} className="rounded-lg bg-lagoon px-4 text-sm font-black text-white">Save</button>
+                </div>
+              )}
+              <p className="mt-2 text-sm font-bold text-slate-500">No parts reserved yet.</p>
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <h4 className="font-black">Work Order History</h4>
+            <div className="mt-3 h-56">
+              <ResponsiveContainer>
+                <BarChart data={historyData.length ? historyData : [{ name: "No WO", created: 0, completed: 0 }]}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#d9e6ee" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="created" fill="#06d6a0" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="completed" fill="#0b1f3a" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex gap-6 border-b border-slate-200 text-sm font-black">
+            <button type="button" onClick={() => setTab("comments")} className={`px-2 pb-3 ${tab === "comments" ? "border-b-2 border-lagoon text-lagoon" : "text-slate-500"}`}>PM Comments</button>
+            <button type="button" onClick={() => setTab("history")} className={`px-2 pb-3 ${tab === "history" ? "border-b-2 border-lagoon text-lagoon" : "text-slate-500"}`}>History</button>
+          </div>
+          <div className="mt-4 grid gap-3">
+            {tab === "history" && workOrders.length ? workOrders.slice(0, 6).map((work) => (
+              <div key={work.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+                <p className="font-black">{work.woNo} / {work.title}</p>
+                <p className="font-bold text-slate-500">{work.status?.replaceAll("_", " ")} / {formatDateCell(work.updatedAt)}</p>
+              </div>
+            )) : <p className="rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{tab === "history" ? "No completed work orders for this PM yet." : "No PM comments yet."}</p>}
+          </div>
+        </div>
+      </div>
+    </RequestModalShell>
+  );
+}
+
+function Inventory({ inventory, submitInventory, saving }: { inventory: any[]; submitInventory: (formData: FormData) => void; saving: boolean }) {
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+      <Panel title="MRO Inventory & Stores" icon={Boxes}>
+        <ReportButtons type="inventory" label="Inventory report" />
+        <div className="grid gap-5 xl:grid-cols-[1fr_0.7fr]">
+          <DataTable
+            rows={inventory}
+            columns={[
+              ["sku", "SKU"],
+              ["name", "Item"],
+              ["category", "Category"],
+              ["onHand", "On hand"],
+              ["reorderPoint", "Reorder"],
+              ["vendor", "Vendor"],
+            ]}
+          />
+          <div className="h-72 rounded-lg bg-slate-50 p-3">
+            <ResponsiveContainer>
+              <BarChart data={inventory.map((item) => ({ name: item.sku?.slice(0, 8), stock: item.onHand, reorder: item.reorderPoint }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#d9e6ee" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="stock" fill="#0f8b8d" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="reorder" fill="#ffd166" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </Panel>
+      <ActionForm title="Add Stock Item" onSubmit={submitInventory} fields={["sku", "name", "category", "unit", "onHand", "reorderPoint", "unitCost", "vendor", "location"]} saving={saving} />
+    </section>
+  );
+}
+
+function Hse({ inspections, submitInspection, saving }: { inspections: any[]; submitInspection: (formData: FormData) => void; saving: boolean }) {
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+      <Panel title="HSE, Compliance & Inspections" icon={ShieldCheck}>
+        <ReportButtons type="inspections" label="HSE report" />
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <DataTable
+          rows={inspections}
+          columns={[
+            ["code", "Code"],
+            ["title", "Inspection"],
+            ["area", "Area"],
+            ["risk", "Risk"],
+            ["score", "Score"],
+            ["status", "Status"],
+          ]}
+        />
+        <div className="rounded-lg bg-coral/10 p-4">
+          <AlertTriangle className="text-coral" />
+          <p className="mt-3 font-black">Permit-to-work control</p>
+          <p className="mt-2 text-sm text-slate-700">Link high-risk maintenance to RAMS, lockout-tagout, confined space, hot work and audit trails.</p>
+        </div>
+        </div>
+      </Panel>
+      <ActionForm title="Record Inspection" onSubmit={submitInspection} fields={["title", "area", "inspector", "risk", "score", "findings"]} saving={saving} />
+    </section>
+  );
+}
+
+function ComplianceCertification({ records, view, submitCertificate, saving }: { records: any[]; view: string; submitCertificate: (formData: FormData) => void; saving: boolean }) {
+  const [tab, setTab] = useState(view || "compliance-dashboard");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+  const [risk, setRisk] = useState("all");
+
+  useEffect(() => {
+    if (view?.startsWith("compliance") || view === "certification-register") setTab(view);
+  }, [view]);
+
+  const today = new Date();
+  const enriched = records.map((record) => {
+    const expiry = new Date(record.expiryDate);
+    const daysToExpiry = Math.ceil((expiry.getTime() - today.getTime()) / 86400000);
+    const computedStatus = daysToExpiry < 0 ? "EXPIRED" : daysToExpiry <= Number(record.renewalLeadDays ?? 30) ? "EXPIRING_SOON" : record.status;
+    return { ...record, daysToExpiry, computedStatus };
+  });
+  const filtered = enriched.filter((record) => {
+    const haystack = [record.certificateNo, record.title, record.authority, record.category, record.assetTag, record.location, record.owner].join(" ").toLowerCase();
+    if (query && !haystack.includes(query.toLowerCase())) return false;
+    if (status !== "all" && record.computedStatus !== status) return false;
+    if (risk !== "all" && record.risk !== risk) return false;
+    return true;
+  });
+  const activeCount = enriched.filter((record) => record.computedStatus === "ACTIVE").length;
+  const expiringCount = enriched.filter((record) => record.computedStatus === "EXPIRING_SOON").length;
+  const expiredCount = enriched.filter((record) => record.computedStatus === "EXPIRED").length;
+  const statutoryCount = enriched.filter((record) => ["Life Safety", "Electrical", "Civil Defense"].includes(record.category)).length;
+  const rows = filtered.map((record) => ({
+    ...record,
+    status: record.computedStatus,
+    issueDate: formatDateCell(record.issueDate),
+    expiryDate: formatDateCell(record.expiryDate),
+    days: record.daysToExpiry < 0 ? `${Math.abs(record.daysToExpiry)} overdue` : `${record.daysToExpiry} days`,
+  }));
+  const auditRows = rows.filter((record) => record.risk === "HIGH" || record.risk === "EXTREME" || record.status !== "ACTIVE");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await submitCertificate(new FormData(form));
+    form.reset();
+  }
+
+  const tabs = [
+    ["compliance-dashboard", "Dashboard"],
+    ["certification-register", "Certificates"],
+    ["compliance-audits", "Audit Calendar"],
+    ["compliance-alerts", "Expiry Alerts"],
+  ] as const;
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_420px]">
+      <div className="space-y-5">
+        <Panel title="Compliance & Certification" icon={ShieldCheck}>
+          <ReportButtons type="compliance" label="Compliance report" />
+          <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+            {tabs.map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setTab(id)} className={`rounded-lg px-3 py-2 text-sm font-black ${tab === id ? "bg-lagoon text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search certificate, authority, asset or location" className={HOUSING_FIELD_CLASS} />
+            <select value={status} onChange={(event) => setStatus(event.target.value)} className={HOUSING_FIELD_CLASS}>
+              <option value="all">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="EXPIRING_SOON">Expiring soon</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="SUSPENDED">Suspended</option>
+            </select>
+            <select value={risk} onChange={(event) => setRisk(event.target.value)} className={HOUSING_FIELD_CLASS}>
+              <option value="all">All risk levels</option>
+              <option>LOW</option>
+              <option>MODERATE</option>
+              <option>HIGH</option>
+              <option>EXTREME</option>
+            </select>
+          </div>
+
+          {tab === "compliance-dashboard" && (
+            <div className="grid gap-4">
+              <div className="grid gap-3 md:grid-cols-4">
+                {[
+                  ["Active Certificates", activeCount, "text-leaf"],
+                  ["Expiring Soon", expiringCount, "text-amber-600"],
+                  ["Expired", expiredCount, "text-coral"],
+                  ["Statutory Controls", statutoryCount, "text-lagoon"],
+                ].map(([label, value, tone]) => (
+                  <div key={label} className="rounded-lg bg-slate-50 p-4">
+                    <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+                    <p className={`mt-2 text-3xl font-black ${tone}`}>{value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                <DataTable rows={rows.slice(0, 8)} columns={[["certificateNo", "Certificate"], ["title", "Title"], ["authority", "Authority"], ["status", "Status"], ["days", "Expiry"]]} />
+                <div className="rounded-lg bg-lagoon/10 p-4">
+                  <ShieldCheck className="text-lagoon" />
+                  <p className="mt-3 font-black">International compliance control</p>
+                  <p className="mt-2 text-sm font-bold text-slate-600">Track statutory certificates, third-party inspections, renewal owners, evidence URLs, expiry alerts and audit-ready records.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === "certification-register" && <DataTable rows={rows} columns={[["certificateNo", "Certificate No"], ["title", "Title"], ["category", "Category"], ["authority", "Authority"], ["assetTag", "Asset"], ["location", "Location"], ["owner", "Owner"], ["status", "Status"], ["expiryDate", "Expiry"], ["days", "Days"]]} />}
+          {tab === "compliance-audits" && <DataTable rows={auditRows} columns={[["certificateNo", "Certificate"], ["title", "Audit Item"], ["authority", "Authority"], ["risk", "Risk"], ["owner", "Owner"], ["expiryDate", "Due / Expiry"], ["notes", "Action Notes"]]} />}
+          {tab === "compliance-alerts" && <DataTable rows={rows.filter((record) => record.status !== "ACTIVE")} columns={[["certificateNo", "Certificate"], ["title", "Alert"], ["status", "Status"], ["risk", "Risk"], ["days", "Expiry"], ["owner", "Owner"], ["notes", "Required Action"]]} />}
+        </Panel>
+      </div>
+      <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-lg bg-sun/50 text-amber-700">
+            <PackagePlus size={20} />
+          </div>
+          <h3 className="text-xl font-black">Add Certificate</h3>
+        </div>
+        <div className="grid gap-3">
+          {["certificateNo", "title", "authority", "category", "assetTag", "location", "owner", "evidenceUrl"].map((field) => (
+            <label key={field} className="grid gap-1 text-sm font-bold capitalize text-slate-600">
+              {field.replace(/([A-Z])/g, " $1")}
+              <input name={field} className={HOUSING_FIELD_CLASS} />
+            </label>
+          ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Issue Date
+              <input name="issueDate" type="date" className={HOUSING_FIELD_CLASS} />
+            </label>
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Expiry Date
+              <input name="expiryDate" type="date" className={HOUSING_FIELD_CLASS} />
+            </label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Status
+              <select name="status" className={HOUSING_FIELD_CLASS}>
+                <option>ACTIVE</option>
+                <option>EXPIRING_SOON</option>
+                <option>EXPIRED</option>
+                <option>SUSPENDED</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Risk
+              <select name="risk" className={HOUSING_FIELD_CLASS}>
+                <option>LOW</option>
+                <option>MODERATE</option>
+                <option>HIGH</option>
+                <option>EXTREME</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-bold text-slate-600">
+              Renewal Lead Days
+              <input name="renewalLeadDays" type="number" min="0" defaultValue="30" className={HOUSING_FIELD_CLASS} />
+            </label>
+          </div>
+          <label className="grid gap-1 text-sm font-bold text-slate-600">
+            Notes
+            <textarea name="notes" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+          </label>
+          <button disabled={saving} className="mt-2 flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-4 font-black text-white disabled:cursor-not-allowed disabled:bg-slate-400">
+            <Plus size={18} />
+            {saving ? "Saving..." : "Save Certificate"}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function Iot({ alerts, acknowledgeAlert, saving }: { alerts: any[]; acknowledgeAlert: (id: string) => void; saving: boolean }) {
+  return (
+    <Panel title="BMS, IoT & Energy Intelligence" icon={RadioTower}>
+      <ReportButtons type="iot-alerts" label="IoT alerts report" />
+      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <DataTable
+          rows={alerts}
+          columns={[
+            ["source", "Source"],
+            ["assetTag", "Asset"],
+            ["severity", "Severity"],
+            ["message", "Message"],
+            ["status", "Status"],
+          ]}
+        />
+        <div className="grid gap-2">
+          {alerts.map((alert) => (
+            <div key={alert.id} className="rounded-lg bg-slate-50 p-3">
+              <p className="text-sm font-black">{alert.assetTag}</p>
+              <p className="mt-1 text-sm text-slate-600">{alert.message}</p>
+              <button disabled={saving || alert.status === "TRIAGED"} onClick={() => acknowledgeAlert(alert.id)} className="mt-3 rounded-lg bg-ink px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">
+                {alert.status === "TRIAGED" ? "Acknowledged" : "Acknowledge"}
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-lg bg-lagoon/10 p-4">
+          <ClipboardCheck className="text-lagoon" />
+          <p className="mt-3 font-black">Condition-based maintenance</p>
+          <p className="mt-2 text-sm text-slate-700">Convert BMS alarms, meter thresholds and vibration events into prioritized work with asset history.</p>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function TeamsServices({
+  teams,
+  services,
+  categories,
+  departments,
+  saving,
+  submitTeam,
+  submitService,
+  submitCategory,
+  submitDepartment,
+  updateTeam,
+  updateService,
+  updateDepartment,
+  deleteTeam,
+  deleteService,
+  deleteDepartment,
+  view,
+}: {
+  teams: any[];
+  services: any[];
+  categories: any[];
+  departments: any[];
+  saving: boolean;
+  submitTeam: (formData: FormData) => void;
+  submitService: (formData: FormData) => void;
+  submitCategory: (formData: FormData) => void;
+  submitDepartment: (formData: FormData) => void;
+  updateTeam: (id: string, formData: FormData) => Promise<void> | void;
+  updateService: (id: string, formData: FormData) => Promise<void> | void;
+  updateDepartment: (id: string, formData: FormData) => Promise<void> | void;
+  deleteTeam: (id: string) => Promise<void> | void;
+  deleteService: (id: string) => Promise<void> | void;
+  deleteDepartment: (id: string) => Promise<void> | void;
+  view: string;
+}) {
+  const [editingDepartment, setEditingDepartment] = useState<any | null>(null);
+  const [editingTeam, setEditingTeam] = useState<any | null>(null);
+  const [editingService, setEditingService] = useState<any | null>(null);
+  const showAll = !["departments", "team-code", "service-teams", "services-catalog"].includes(view);
+  const showDepartments = showAll || view === "departments";
+  const showTeamCode = showAll || view === "team-code";
+  const showServiceTeams = showAll || view === "service-teams";
+  const showServices = showAll || view === "services-catalog";
+  const teamRows = teams.map((team) => ({
+    ...team,
+    companyIdNumber: team.supervisor,
+    departmentCode: team.coverage,
+    departmentName: departments.find((department) => department.code === team.coverage)?.name || team.coverage,
+    service: team.type,
+  }));
+  const serviceRows = services.map((service) => ({
+    ...service,
+    departmentName: service.name,
+    departmentCode: service.code,
+    teamCode: service.team?.code || teams.find((team) => team.id === service.teamId)?.code || "",
+  }));
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_420px]">
+      <div className="space-y-5">
+        {showDepartments && (
+          <Panel title="Department Codes" icon={MapPinned}>
+            <ReportButtons type="departments" label="Departments report" />
+            <DataTable rows={departments} columns={[["code", "Code"], ["name", "Department"], ["siteLocation", "Site"], ["description", "Description"]]} />
+            <SetupActions rows={departments} labelKey="code" onEdit={setEditingDepartment} onDelete={deleteDepartment} saving={saving} />
+          </Panel>
+        )}
+        {showTeamCode && (
+          <Panel title="Team Codes" icon={Users}>
+            <ReportButtons type="teams" label="Team codes report" />
+            <DataTable rows={teamRows} columns={[["code", "Team Code"], ["name", "Team Name"], ["departmentName", "Department"], ["departmentCode", "Dept Code"], ["service", "Service"]]} />
+            <SetupActions rows={teamRows} labelKey="code" onEdit={setEditingTeam} onDelete={deleteTeam} saving={saving} />
+          </Panel>
+        )}
+        {showServiceTeams && (
+          <Panel title="Service Teams" icon={Users}>
+            <ReportButtons type="teams" label="Service teams report" />
+            <DataTable rows={teamRows} columns={[["code", "Code"], ["name", "Team"], ["companyIdNumber", "Company ID"], ["departmentCode", "Dept"], ["service", "Service"], ["email", "Email"], ["phone", "Phone"]]} />
+            <SetupActions rows={teamRows} labelKey="code" onEdit={setEditingTeam} onDelete={deleteTeam} saving={saving} />
+          </Panel>
+        )}
+        {showServices && (
+          <Panel title="Services Catalog" icon={ClipboardCheck}>
+            <ReportButtons type="services" label="Services report" />
+            <DataTable rows={serviceRows} columns={[["code", "Code"], ["name", "Service"], ["departmentName", "Department"], ["departmentCode", "Dept"], ["teamCode", "Team Code"], ["slaHours", "SLA hrs"]]} />
+            <SetupActions rows={serviceRows} labelKey="code" onEdit={setEditingService} onDelete={deleteService} saving={saving} />
+          </Panel>
+        )}
+        {showAll && (
+          <Panel title="Asset Categories" icon={Boxes}>
+            <ReportButtons type="asset-categories" label="Categories report" />
+            <DataTable rows={categories} columns={[["code", "Code"], ["name", "Category"], ["type", "Type"], ["defaultLifeYrs", "Life yrs"], ["statutory", "Statutory"]]} />
+          </Panel>
+        )}
+      </div>
+      <div className="space-y-5">
+        {showDepartments && <ActionForm title="Create Department Code" onSubmit={submitDepartment} fields={["code", "name", "siteLocation", "description"]} saving={saving} />}
+        {showTeamCode && <TeamCodeForm departments={departments} onSubmit={submitTeam} saving={saving} />}
+        {showServiceTeams && <TeamForm departments={departments} onSubmit={submitTeam} saving={saving} />}
+        {showServices && <ServiceForm teams={teams} departments={departments} onSubmit={submitService} saving={saving} />}
+        {showAll && <ActionForm title="Add Asset Category" onSubmit={submitCategory} fields={["code", "name", "type", "defaultLifeYrs", "statutory", "description"]} saving={saving} />}
+      </div>
+      {editingDepartment && (
+        <RequestModalShell title={`Edit Department ${editingDepartment.code}`} onClose={() => setEditingDepartment(null)}>
+          <DepartmentForm department={editingDepartment} onSubmit={async (formData) => { await updateDepartment(editingDepartment.id, formData); setEditingDepartment(null); }} saving={saving} />
+        </RequestModalShell>
+      )}
+      {editingTeam && (
+        <RequestModalShell title={`Edit Team ${editingTeam.code}`} onClose={() => setEditingTeam(null)}>
+          <TeamForm team={editingTeam} departments={departments} onSubmit={async (formData) => { await updateTeam(editingTeam.id, formData); setEditingTeam(null); }} saving={saving} />
+        </RequestModalShell>
+      )}
+      {editingService && (
+        <RequestModalShell title={`Edit Service ${editingService.code}`} onClose={() => setEditingService(null)}>
+          <ServiceForm service={editingService} teams={teams} departments={departments} onSubmit={async (formData) => { await updateService(editingService.id, formData); setEditingService(null); }} saving={saving} />
+        </RequestModalShell>
+      )}
+    </section>
+  );
+}
+
+function SetupActions({ rows, labelKey, onEdit, onDelete, saving }: { rows: any[]; labelKey: string; onEdit: (row: any) => void; onDelete: (id: string) => void; saving: boolean }) {
+  if (!rows.length) return null;
+  return (
+    <div className="mt-4 grid gap-2">
+      {rows.map((row) => (
+        <div key={row.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+          <span className="text-sm font-black">{row[labelKey]} / {row.name}</span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => onEdit(row)} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Edit</button>
+            <button type="button" disabled={saving} onClick={() => onDelete(row.id)} className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white disabled:bg-slate-400">Delete</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DepartmentForm({ department, onSubmit, saving }: { department?: any; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="grid gap-3">
+      <input name="code" defaultValue={department?.code ?? ""} placeholder="Department code" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+      <input name="name" defaultValue={department?.name ?? ""} placeholder="Department name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+      <input name="siteLocation" defaultValue={department?.siteLocation ?? ""} placeholder="Site location" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+      <textarea name="description" defaultValue={department?.description ?? ""} placeholder="Description" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+      <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Save Department"}</button>
+    </form>
+  );
+}
+
+function TeamCodeForm({ departments, onSubmit, saving }: { departments: any[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    form.reset();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">Create Team Code</h3>
+      <div className="mt-4 grid gap-3">
+        <input name="teamName" placeholder="Team name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <select name="departmentCode" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select department code</option>
+          {departments.map((department) => (
+            <option key={department.id} value={department.code}>{department.code} - {department.name}</option>
+          ))}
+        </select>
+        <input name="departmentName" placeholder="Department name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <input name="teamCode" placeholder="Team code manual entry" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Create Team Code"}</button>
+      </div>
+    </form>
+  );
+}
+
+function TeamForm({ team, departments, onSubmit, saving }: { team?: any; departments: any[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    form.reset();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">Add Service Team</h3>
+      <div className="mt-4 grid gap-3">
+        <input name="name" defaultValue={team?.name ?? ""} placeholder="Name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <input name="teamCode" defaultValue={team?.code ?? ""} placeholder="Team code" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <input name="companyIdNumber" defaultValue={team?.companyIdNumber ?? team?.supervisor ?? ""} placeholder="Company ID number" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <select name="departmentCode" defaultValue={team?.departmentCode ?? team?.coverage ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select department code</option>
+          {departments.map((department) => (
+            <option key={department.id} value={department.code}>{department.code} - {department.name}</option>
+          ))}
+        </select>
+        <input name="service" defaultValue={team?.service ?? team?.type ?? ""} placeholder="Service" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <input name="email" type="email" defaultValue={team?.email ?? ""} placeholder="Email" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <input name="phone" defaultValue={team?.phone ?? ""} placeholder="Phone number" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Submit"}</button>
+      </div>
+    </form>
+  );
+}
+
+function ServiceForm({ service, teams, departments, onSubmit, saving }: { service?: any; teams: any[]; departments: any[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    form.reset();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">Add Service</h3>
+      <div className="mt-4 grid gap-3">
+        <input name="departmentName" defaultValue={service?.departmentName ?? service?.name ?? ""} placeholder="Department / service name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <select name="departmentCode" defaultValue={service?.departmentCode ?? service?.code ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select department code</option>
+          {departments.map((department) => (
+            <option key={department.id} value={department.code}>{department.code} - {department.name}</option>
+          ))}
+        </select>
+        <select name="teamCode" defaultValue={service?.teamCode ?? service?.team?.code ?? ""} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+          <option value="">Select team code</option>
+          {teams.map((team) => (
+            <option key={team.id} value={team.code}>{team.code} - {team.name}</option>
+          ))}
+        </select>
+        <input name="slaHours" type="number" defaultValue={service?.slaHours ?? 24} placeholder="SLA hours" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Submit"}</button>
+      </div>
+    </form>
+  );
+}
+
+function Locations({ locations, submitLocation, saving }: { locations: any[]; submitLocation: (formData: FormData) => void; saving: boolean }) {
+  const [siteFilter, setSiteFilter] = useState("");
+  const [buildingFilter, setBuildingFilter] = useState("");
+  const [floorFilter, setFloorFilter] = useState("");
+  const [query, setQuery] = useState("");
+  const siteOptions = Array.from(new Set(locations.map((location) => location.site).filter(Boolean)));
+  const buildingOptions = Array.from(new Set(locations.filter((location) => !siteFilter || location.site === siteFilter).map((location) => location.building).filter(Boolean)));
+  const floorOptions = Array.from(new Set(locations.filter((location) => (!siteFilter || location.site === siteFilter) && (!buildingFilter || location.building === buildingFilter)).map((location) => location.floor).filter(Boolean)));
+  const filtered = locations.filter((location) => {
+    const haystack = `${location.code} ${location.site} ${location.zone} ${location.building} ${location.floor} ${location.room} ${location.type} ${location.description}`.toLowerCase();
+    return (!query || haystack.includes(query.toLowerCase()))
+      && (!siteFilter || location.site === siteFilter)
+      && (!buildingFilter || location.building === buildingFilter)
+      && (!floorFilter || location.floor === floorFilter);
+  });
+  const hierarchyRows = siteOptions.map((site) => {
+    const siteRows = locations.filter((location) => location.site === site);
+    return {
+      id: site,
+      site,
+      buildings: new Set(siteRows.map((location) => location.building)).size,
+      floors: new Set(siteRows.map((location) => `${location.building}-${location.floor}`)).size,
+      rooms: siteRows.length,
+      active: siteRows.filter((location) => location.active).length,
+    };
+  });
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_420px]">
+      <Panel title="Location Register" icon={MapPinned}>
+        <ReportButtons type="locations" label="Locations report" />
+        <div className="mb-4 grid gap-3 rounded-lg bg-slate-50 p-3 md:grid-cols-[1fr_180px_180px_140px_auto]">
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search location, room, building or type" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-lagoon" />
+          <select value={siteFilter} onChange={(event) => { setSiteFilter(event.target.value); setBuildingFilter(""); setFloorFilter(""); }} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="">All sites</option>
+            {siteOptions.map((site) => <option key={site} value={site}>{site}</option>)}
+          </select>
+          <select value={buildingFilter} onChange={(event) => { setBuildingFilter(event.target.value); setFloorFilter(""); }} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="">All buildings</option>
+            {buildingOptions.map((building) => <option key={building} value={building}>{building}</option>)}
+          </select>
+          <select value={floorFilter} onChange={(event) => setFloorFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option value="">All floors</option>
+            {floorOptions.map((floor) => <option key={floor} value={floor}>{floor}</option>)}
+          </select>
+          <button type="button" onClick={() => { setQuery(""); setSiteFilter(""); setBuildingFilter(""); setFloorFilter(""); }} className="h-11 rounded-lg bg-white px-3 text-sm font-black text-lagoon">Clear</button>
+        </div>
+        <div className="mb-4 grid gap-3 md:grid-cols-4">
+          <div className="rounded-lg bg-lagoon/10 p-3"><p className="text-xs font-black uppercase text-lagoon">Sites</p><p className="text-2xl font-black">{siteOptions.length}</p></div>
+          <div className="rounded-lg bg-emerald-50 p-3"><p className="text-xs font-black uppercase text-emerald-700">Buildings</p><p className="text-2xl font-black">{new Set(locations.map((location) => location.building)).size}</p></div>
+          <div className="rounded-lg bg-amber-50 p-3"><p className="text-xs font-black uppercase text-amber-700">Floors</p><p className="text-2xl font-black">{new Set(locations.map((location) => `${location.building}-${location.floor}`)).size}</p></div>
+          <div className="rounded-lg bg-rose-50 p-3"><p className="text-xs font-black uppercase text-rose-700">Rooms</p><p className="text-2xl font-black">{locations.length}</p></div>
+        </div>
+        <DataTable rows={filtered} columns={[["code", "Code"], ["site", "Site"], ["zone", "Zone"], ["building", "Building"], ["floor", "Floor"], ["room", "Room"], ["type", "Type"], ["description", "Description"], ["active", "Active"]]} />
+      </Panel>
+      <div className="grid gap-5">
+        <Panel title="Location Hierarchy" icon={MapPinned}>
+          <DataTable rows={hierarchyRows} columns={[["site", "Site"], ["buildings", "Buildings"], ["floors", "Floors"], ["rooms", "Rooms"], ["active", "Active Rooms"]]} />
+        </Panel>
+        <ActionForm title="Add Location" onSubmit={submitLocation} fields={["code", "site", "zone", "building", "floor", "room", "type", "description"]} saving={saving} />
+      </div>
+    </section>
+  );
+}
+
+function JobPlans({ jobPlans, services, departments, submitJobPlan, saving }: { jobPlans: any[]; services: any[]; departments: any[]; submitJobPlan: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await submitJobPlan(new FormData(form));
+    form.reset();
+  }
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_420px]">
+      <Panel title="Job Plans" icon={ClipboardCheck}>
+        <ReportButtons type="job-plans" label="Job plans report" />
+        <DataTable rows={jobPlans} columns={[["code", "Code"], ["name", "Name"], ["assetType", "Asset Type"], ["departmentCode", "Dept"], ["serviceCode", "Service"], ["estimatedHours", "Hours"], ["priority", "Priority"], ["active", "Active"]]} />
+      </Panel>
+      <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+        <h3 className="text-xl font-black">Add Job Plan</h3>
+        <div className="mt-4 grid gap-3">
+          <input name="code" placeholder="Job plan code" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <input name="name" placeholder="Job plan name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <input name="assetType" placeholder="Specific asset type" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <select name="departmentCode" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option value="">Select department</option>
+            {departments.map((department) => <option key={department.id} value={department.code}>{department.code} - {department.name}</option>)}
+          </select>
+          <select name="serviceCode" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option value="">Select service</option>
+            {services.map((service) => <option key={service.id} value={service.code}>{service.code} - {service.name}</option>)}
+          </select>
+          <input name="estimatedHours" type="number" placeholder="Estimated hours" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <select name="priority" defaultValue="MEDIUM" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+          </select>
+          <textarea name="steps" placeholder="Job plan steps" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+          <textarea name="safetyNotes" placeholder="Safety notes" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+          <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Save Job Plan"}</button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function BulkUpload({ saving, onSubmit, initialModule }: { saving: boolean; onSubmit: (formData: FormData) => void; initialModule: string }) {
+  const [module, setModule] = useState(initialModule);
+
+  useEffect(() => {
+    setModule(initialModule);
+  }, [initialModule]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+    event.currentTarget.reset();
+    setModule(initialModule);
+  }
+
+  return (
+    <section className="grid gap-5">
+      <Panel title="Bulk Upload Center" icon={Upload}>
+        <form onSubmit={handleSubmit} className="grid gap-4">
+          <label className="grid gap-1 text-sm font-bold text-slate-600">
+            Module
+            <select name="module" value={module} onChange={(event) => setModule(event.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+              <option value="assets">Assets</option>
+              <option value="categories">Asset Categories</option>
+              <option value="inventory">Inventory</option>
+              <option value="requests">Service Requests</option>
+              <option value="workOrders">Work Orders</option>
+              <option value="jobPlans">Job Plans</option>
+              <option value="locations">Locations</option>
+              <option value="inspections">Inspections</option>
+              <option value="teams">Teams</option>
+              <option value="services">Services</option>
+              <option value="departments">Departments</option>
+              <option value="employees">Employees</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-bold text-slate-600">
+            CSV File
+            <input name="file" type="file" accept=".csv,text/csv" className="rounded-lg border border-slate-200 bg-white p-3" />
+          </label>
+          <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">
+            {saving ? "Uploading..." : "Upload CSV"}
+          </button>
+        </form>
+      </Panel>
+    </section>
+  );
+}
+
+function Templates() {
+  const templates = [
+    ["assets", "Assets", "Entity Name,Asset Name,Description,Location Name,Asset Type,Model No.,Manufacturer,Serial No.,Purchase Date,QR Code,Parent Asset,Assigned To,Vendors,Asset Code,Parts,URL 1,URL Label 1,URL 2,URL Label 2,Warranty Expiry Date,Life Expectancy (in months),Purchase Cost,Replacement Cost,Salvage Value"],
+    ["departments", "Departments", "code,name,siteLocation,description"],
+    ["employees", "Employees", "name,email,companyId,nationalityType,departmentCode,siteLocation"],
+    ["teams", "Teams", "name,companyIdNumber,departmentCode,service,email,phone"],
+    ["services", "Services", "departmentName,departmentCode"],
+    ["inventory", "Inventory", "sku,name,category,unit,onHand,reorderPoint,unitCost,vendor,location"],
+    ["requests", "Requests", "ticketNo,title,category,departmentCode,serviceCode,assignedTeamCode,requester,channel,priority,status,location,attachmentUrls,rejectionReason,slaHours,description"],
+    ["workOrders", "Work Orders", "woNo,title,type,assetType,departmentCode,serviceCode,assignedTeamCode,jobPlanCode,priority,status,assetTag,dueHours,estimatedHours,cost,jobPlan,safetyNotes,workNotes,materialRequest,photoUrls,assetsUsed,inventoryUsed,supervisorDecision"],
+    ["jobPlans", "Job Plans", "code,name,assetType,departmentCode,serviceCode,estimatedHours,priority,steps,safetyNotes"],
+    ["locations", "Locations", "code,site,zone,building,floor,room,type,description"],
+    ["inspections", "Inspections", "code,title,area,inspector,risk,score,status,dueAt,findings"],
+  ];
+
+  return (
+    <Panel title="Bulk Upload Templates" icon={ClipboardCheck}>
+      <div className="mb-4 rounded-lg border border-lagoon/20 bg-lagoon/5 p-4">
+        <p className="font-black text-ink">Download CSV data templates</p>
+        <p className="mt-1 text-sm font-bold text-slate-600">Use these files for bulk upload. Each download contains the correct column headers for that module.</p>
+      </div>
+      <div className="grid gap-3 text-sm lg:grid-cols-2">
+        {templates.map(([type, title, value]) => (
+          <Template key={type} type={type} title={title} value={value} />
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function UsersRoles({
+  users,
+  teams,
+  departments,
+  roles,
+  permissions,
+  rolePermissions,
+  submitUser,
+  submitRole,
+  updateUser,
+  deleteUser,
+  saveRolePermissions,
+  saving,
+  setToast,
+}: {
+  users: any[];
+  teams: any[];
+  departments: any[];
+  roles: any[];
+  permissions: any[];
+  rolePermissions: any[];
+  submitUser: (formData: FormData) => void;
+  submitRole: (formData: FormData) => void;
+  updateUser: (id: string, formData: FormData) => void;
+  deleteUser: (id: string) => void;
+  saveRolePermissions: (role: string, permissionCodes: string[]) => void;
+  refreshData: () => void;
+  saving: boolean;
+  setToast: (message: string) => void;
+}) {
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [role, setRole] = useState("Admin");
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(
+    rolePermissions.filter((item) => item.role === "Admin").map((item) => item.permission.code),
+  );
+
+  function changeRole(nextRole: string) {
+    setRole(nextRole);
+    setSelectedPermissions(rolePermissions.filter((item) => item.role === nextRole).map((item) => item.permission.code));
+  }
+
+  function togglePermission(code: string) {
+    setSelectedPermissions((current) => current.includes(code) ? current.filter((item) => item !== code) : [...current, code]);
+  }
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_420px]">
+      <div className="space-y-5">
+        <Panel title="Users" icon={Users}>
+          <ReportButtons type="users" label="Users report" />
+          <div className="grid gap-2">
+            {users.map((user) => (
+              <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+                <div>
+                  <p className="font-black">{user.name}</p>
+                  <p className="text-sm text-slate-600">{user.email} / {user.role} / {user.department}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setEditingUser(user)} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Edit</button>
+                  <button
+                    onClick={() => user.email === "admin@cafm.local" ? setToast("Initial admin user cannot be deleted.") : deleteUser(user.id)}
+                    className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+        <Panel title="Permissions Matrix" icon={ShieldCheck}>
+          <ReportButtons type="permissions" label="Permissions report" />
+          <div className="mb-4 flex flex-wrap gap-3">
+            <select value={role} onChange={(event) => changeRole(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3">
+              {roleOptions(roles).map((item) => <option key={item}>{item}</option>)}
+            </select>
+            <button onClick={() => saveRolePermissions(role, selectedPermissions)} className="rounded-lg bg-ink px-4 py-2 text-sm font-black text-white">Save Permissions</button>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {permissions.map((permission) => (
+              <label key={permission.id} className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-sm">
+                <input type="checkbox" checked={selectedPermissions.includes(permission.code)} onChange={() => togglePermission(permission.code)} className="mt-1" />
+                <span>
+                  <span className="block font-black">{permission.name}</span>
+                  <span className="block text-slate-500">{permission.module} / {permission.code}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </Panel>
+      </div>
+      <div className="space-y-5">
+        <RoleForm onSubmit={submitRole} saving={saving} />
+        <UserForm title="Create User" teams={teams} departments={departments} users={users} roles={roles} onSubmit={submitUser} saving={saving} />
+        {editingUser && <UserForm title="Edit User" user={editingUser} teams={teams} departments={departments} users={users} roles={roles} onSubmit={(formData) => updateUser(editingUser.id, formData)} saving={saving} />}
+      </div>
+    </section>
+  );
+}
+
+function RoleForm({ onSubmit, saving }: { onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+    event.currentTarget.reset();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">Create Custom Role</h3>
+      <div className="mt-4 grid gap-3">
+        <input name="name" placeholder="Role name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+        <textarea name="description" placeholder="Role purpose and access scope" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Create Role"}</button>
+      </div>
+    </form>
+  );
+}
+
+function roleOptions(roles: any[]) {
+  const defaults = ["Admin", "Department Supervisor", "Supervisor", "Service Team", "Technician", "Helpdesk", "Reception", "Resident", "Requester"];
+  return Array.from(new Set([...defaults, ...roles.map((role) => role.name)]));
+}
+
+function UserForm({ title, user, teams, departments, users, roles, onSubmit, saving }: { title: string; user?: any; teams: any[]; departments: any[]; users: any[]; roles: any[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+    if (!user) event.currentTarget.reset();
+  }
+
+  const cls = "h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon";
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <h3 className="text-xl font-black">{title}</h3>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <label className="grid gap-1 text-sm font-bold text-slate-600">User Name<input name="name" defaultValue={user?.name ?? ""} placeholder="Enter your Name" className={cls} /></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Email<input name="email" defaultValue={user?.email ?? ""} type="email" placeholder="Enter Email" className={cls} /></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Phone<input name="phone" defaultValue={user?.phone ?? ""} placeholder="Enter Phone Number" className={cls} /></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Password<input name="password" type="password" placeholder={user ? "New password optional" : "Optional, default Welcome@123"} className={cls} /></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Select User Role<select name="role" defaultValue={user?.role ?? "Service Team"} className={cls}>
+          {roleOptions(roles).map((role) => <option key={role}>{role}</option>)}
+        </select></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Select Department<select name="department" defaultValue={user?.department ?? ""} className={cls}>
+          <option value="">Select Department</option>
+          {departments.map((department) => <option key={department.id} value={department.code}>{department.code} - {department.name}</option>)}
+        </select></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Select Team
+        <select name="teamCode" defaultValue={user?.team?.code ?? ""} className={cls}>
+          <option value="">Select Team</option>
+          {teams.map((team) => (
+            <option key={team.id} value={team.code}>{team.code} - {team.name}</option>
+          ))}
+        </select></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Supervisor / Assigned User<select name="supervisorEmail" defaultValue={user?.supervisorEmail ?? ""} className={cls}>
+          <option value="">Select user</option>
+          {users.filter((item) => item.id !== user?.id).map((item) => <option key={item.id} value={item.email}>{item.name} - {item.role}</option>)}
+        </select></label>
+        <label className="grid gap-1 text-sm font-bold text-slate-600">Status
+        <select name="active" defaultValue={String(user?.active ?? true)} className={cls}>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select></label>
+        <div className="rounded-lg bg-slate-50 p-3 md:col-span-2">
+          <p className="text-sm font-black text-slate-700">Email Notification</p>
+          <div className="mt-3 flex flex-wrap gap-6">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-600"><input name="notifyWorkOrder" type="checkbox" defaultChecked={user?.notifyWorkOrder ?? false} /> Work Order</label>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-600"><input name="notifyFacilityBooking" type="checkbox" defaultChecked={user?.notifyFacilityBooking ?? false} /> Facility Booking</label>
+          </div>
+        </div>
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400 md:col-span-2">{saving ? "Saving..." : "Create Now"}</button>
+      </div>
+    </form>
+  );
+}
+
+function HumanResources({ employees, departments, submitEmployee, saving }: { employees: any[]; departments: any[]; submitEmployee: (formData: FormData) => void; saving: boolean }) {
+  const [nationality, setNationality] = useState("All");
+  const nationalities = ["All", ...Array.from(new Set(employees.map((employee) => employee.nationalityType).filter(Boolean)))];
+  const filtered = nationality === "All" ? employees : employees.filter((employee) => employee.nationalityType === nationality);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await submitEmployee(new FormData(form));
+    form.reset();
+  }
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1fr_420px]">
+      <Panel title="Employees" icon={Users}>
+        <ReportButtons type="employees" label="Employees report" />
+        <div className="mb-4 flex items-center gap-3">
+          <select value={nationality} onChange={(event) => setNationality(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3">
+            {nationalities.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </div>
+        <DataTable rows={filtered} columns={[["name", "Name"], ["email", "Email"], ["companyId", "Company ID"], ["nationalityType", "Nationality"], ["departmentCode", "Dept"], ["siteLocation", "Site"]]} />
+      </Panel>
+      <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+        <h3 className="text-xl font-black">Add Employee</h3>
+        <div className="mt-4 grid gap-3">
+          <input name="name" placeholder="Name" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <input name="email" type="email" placeholder="Email" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <input name="companyId" placeholder="Company ID" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <input name="nationalityType" placeholder="Nationality type" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <select name="departmentCode" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+            <option value="">Select department</option>
+            {departments.map((department) => <option key={department.id} value={department.code}>{department.code} - {department.name}</option>)}
+          </select>
+          <input name="siteLocation" placeholder="Site location" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+          <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Save Employee"}</button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function HousingOperations({
+  housing,
+  view,
+  saving,
+  canManage,
+  canApprove,
+  userRole,
+  submitHousing,
+  updateHousing,
+  deleteHousing,
+  refreshData,
+}: {
+  housing: ConsoleData["housing"];
+  view: string;
+  saving: boolean;
+  canManage: boolean;
+  canApprove: boolean;
+  userRole: string;
+  submitHousing: (formData: FormData) => void;
+  updateHousing: (type: string, id: string, body: Record<string, unknown>) => Promise<void> | void;
+  deleteHousing: (type: string, id: string) => Promise<void> | void;
+  refreshData: () => Promise<void>;
+}) {
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("All");
+  const [companyFilter, setCompanyFilter] = useState("All");
+  const [buildingFilter, setBuildingFilter] = useState("All");
+  const [floorFilter, setFloorFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [selected, setSelected] = useState<{ type: string; record: any } | null>(null);
+  const [runningAlerts, setRunningAlerts] = useState(false);
+  const rooms = housing?.rooms ?? [];
+  const bookings = housing?.bookings ?? [];
+  const inspections = housing?.inspections ?? [];
+  const assets = housing?.assets ?? [];
+  const inventory = housing?.inventory ?? [];
+  const approvals = housing?.approvals ?? [];
+  const notifications = housing?.notifications ?? [];
+  const notificationSettings = housing?.notificationSettings ?? [];
+  const history = housing?.history ?? [];
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const roomBuilding = (room: any) => room?.block?.name || room?.property?.name || "Unassigned";
+  const roomMatchesLocationFilters = (room: any) => {
+    if (buildingFilter !== "All" && roomBuilding(room) !== buildingFilter) return false;
+    if (floorFilter !== "All" && String(room?.floor ?? "") !== floorFilter) return false;
+    if (categoryFilter !== "All" && String(room?.roomType ?? "") !== categoryFilter) return false;
+    return true;
+  };
+  const inDashboardDateRange = (value: unknown) => {
+    if (!dateFrom && !dateTo) return true;
+    if (!value) return false;
+    const time = new Date(String(value)).getTime();
+    if (Number.isNaN(time)) return false;
+    if (dateFrom && time < new Date(`${dateFrom}T00:00:00`).getTime()) return false;
+    if (dateTo && time > new Date(`${dateTo}T23:59:59`).getTime()) return false;
+    return true;
+  };
+  const activeBookingStatuses = new Set(["APPROVED", "CHECKED_IN", "PENDING_APPROVAL", "REQUESTED"]);
+  const bookingCompany = (booking: any) => booking?.companyName || booking?.resident?.companyName || booking?.resident?.companyId || booking?.departmentCode || "Unassigned";
+  const bookingMatchesFilters = (booking: any) => {
+    if (!roomMatchesLocationFilters(booking.room)) return false;
+    if (companyFilter !== "All" && bookingCompany(booking) !== companyFilter) return false;
+    return inDashboardDateRange(booking.checkIn || booking.createdAt);
+  };
+  const filteredBookings = bookings.filter(bookingMatchesFilters);
+  const companyRoomIds = new Set(filteredBookings.map((booking) => booking.roomId || booking.room?.id).filter(Boolean));
+  const dashboardRooms = rooms.filter((room) => roomMatchesLocationFilters(room) && (companyFilter === "All" || companyRoomIds.has(room.id)));
+  const dashboardRoomIds = new Set(dashboardRooms.map((room) => room.id));
+  const dashboardInspections = inspections.filter((inspection) => dashboardRoomIds.has(inspection.roomId || inspection.room?.id) && inDashboardDateRange(inspection.dueAt || inspection.createdAt));
+  const dashboardAssets = assets.filter((asset) => !asset.roomId || dashboardRoomIds.has(asset.roomId || asset.room?.id));
+  const dashboardInventory = inventory.filter((item) => !item.roomId || dashboardRoomIds.has(item.roomId || item.room?.id));
+  const dashboardApprovals = approvals.filter((approval) => inDashboardDateRange(approval.createdAt || approval.updatedAt));
+  const occupancy = dashboardRooms.reduce((sum, room) => sum + Number(room.occupancy || 0), 0);
+  const capacity = dashboardRooms.reduce((sum, room) => sum + Number(room.capacity || 0), 0);
+  const availableRooms = dashboardRooms.filter((room) => room.status === "AVAILABLE").length;
+  const occupiedRooms = dashboardRooms.filter((room) => room.status === "OCCUPIED" || Number(room.occupancy || 0) >= Number(room.capacity || 0)).length;
+  const vacantRooms = dashboardRooms.filter((room) => room.status === "AVAILABLE" && Number(room.occupancy || 0) === 0).length;
+  const blockedRooms = dashboardRooms.filter((room) => room.status === "BLOCKED").length;
+  const maintenanceRooms = dashboardRooms.filter((room) => room.status === "MAINTENANCE").length;
+  const checkInsToday = filteredBookings.filter((booking) => String(booking.checkIn || "").slice(0, 10) === todayKey).length;
+  const checkOutsToday = filteredBookings.filter((booking) => String(booking.checkOut || "").slice(0, 10) === todayKey).length;
+  const openApprovals = dashboardApprovals.filter((approval) => approval.status === "PENDING").length;
+  const overdueInspections = dashboardInspections.filter((inspection) => new Date(inspection.dueAt).getTime() < Date.now() && !["PASSED", "CLOSED"].includes(inspection.status)).length;
+  const safetyObservations = dashboardInspections.filter((inspection) => inspection.status === "FAILED" || Number(inspection.score || 100) < 80).length + notifications.filter((notification) => ["HIGH", "CRITICAL"].includes(notification.severity)).length;
+  const housekeepingOpen = dashboardInspections.filter((inspection) => String(inspection.inspectionType || "").toLowerCase().includes("housekeeping") && !["PASSED", "CLOSED"].includes(inspection.status)).length;
+  const dashboardCompanies = Array.from(new Set(bookings.map(bookingCompany))).filter(Boolean).sort();
+  const dashboardBuildings = Array.from(new Set(rooms.map(roomBuilding))).filter(Boolean).sort();
+  const dashboardFloors = Array.from(new Set(rooms.map((room) => String(room.floor ?? "")))).filter(Boolean).sort();
+  const dashboardCategories = Array.from(new Set(rooms.map((room) => String(room.roomType ?? "")))).filter(Boolean).sort();
+  const groupRooms = (rows: any[], keyFn: (row: any) => string) => {
+    const map = new Map<string, { name: string; capacity: number; occupied: number; rooms: number }>();
+    rows.forEach((room) => {
+      const key = keyFn(room) || "Unassigned";
+      const current = map.get(key) || { name: key, capacity: 0, occupied: 0, rooms: 0 };
+      current.capacity += Number(room.capacity || 0);
+      current.occupied += Number(room.occupancy || 0);
+      current.rooms += 1;
+      map.set(key, current);
+    });
+    return Array.from(map.values()).map((item) => ({ ...item, occupancy: item.capacity ? Math.round((item.occupied / item.capacity) * 100) : 0 }));
+  };
+  const groupCount = (rows: any[], keyFn: (row: any) => string) => {
+    const map = new Map<string, number>();
+    rows.forEach((row) => {
+      const key = keyFn(row) || "Unassigned";
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+  };
+  const companyOccupancyData = groupCount(filteredBookings.filter((booking) => activeBookingStatuses.has(booking.status)), bookingCompany);
+  const buildingOccupancyData = groupRooms(dashboardRooms, roomBuilding);
+  const categoryOccupancyData = groupRooms(dashboardRooms, (room) => room.roomType || "Unassigned");
+  const ticketSummary = [
+    { metric: "Open booking requests", value: filteredBookings.filter((booking) => ["REQUESTED", "PENDING_APPROVAL"].includes(booking.status)).length, status: "Open" },
+    { metric: "Approved / checked-in", value: filteredBookings.filter((booking) => ["APPROVED", "CHECKED_IN"].includes(booking.status)).length, status: "Active" },
+    { metric: "Inspection findings", value: overdueInspections, status: overdueInspections ? "Action" : "Clear" },
+    { metric: "Safety observations", value: safetyObservations, status: safetyObservations ? "Action" : "Clear" },
+  ];
+  const assetStatusSummary = groupCount(dashboardAssets, (asset) => asset.status || "Unknown");
+  const housekeepingSummary = [
+    { metric: "Open housekeeping checks", value: housekeepingOpen, status: housekeepingOpen ? "Action" : "Clear" },
+    { metric: "Completed inspections", value: dashboardInspections.filter((inspection) => ["PASSED", "CLOSED"].includes(inspection.status)).length, status: "Completed" },
+    { metric: "Failed inspections", value: dashboardInspections.filter((inspection) => inspection.status === "FAILED").length, status: "Failed" },
+  ];
+  const todayMovements = filteredBookings
+    .filter((booking) => String(booking.checkIn || "").slice(0, 10) === todayKey || String(booking.checkOut || "").slice(0, 10) === todayKey)
+    .map((booking) => ({ ...booking, movement: String(booking.checkIn || "").slice(0, 10) === todayKey ? "Check-in" : "Check-out" }));
+  const filterText = search.toLowerCase();
+  const visibleBookings = bookings.filter((booking) => {
+    const haystack = `${booking.bookingNo} ${booking.residentName} ${booking.departmentCode} ${booking.status} ${booking.room?.roomNumber} ${booking.bed?.label}`.toLowerCase();
+    return (!search || haystack.includes(filterText)) && (status === "All" || booking.status === status);
+  });
+  const visibleRooms = rooms.filter((room) => {
+    const haystack = `${room.code} ${room.roomNumber} ${room.property?.name} ${room.block?.name} ${room.floor} ${room.roomType} ${room.status}`.toLowerCase();
+    return (!search || haystack.includes(filterText)) && (status === "All" || room.status === status);
+  });
+  const visibleInspections = inspections.filter((inspection) => {
+    const haystack = `${inspection.inspectionNo} ${inspection.inspectionType} ${inspection.inspector} ${inspection.status} ${inspection.findings} ${inspection.room?.roomNumber}`.toLowerCase();
+    return (!search || haystack.includes(filterText)) && (status === "All" || inspection.status === status);
+  });
+  const visibleAssets = assets.filter((asset) => {
+    const haystack = `${asset.tag} ${asset.name} ${asset.category} ${asset.status} ${asset.serialNumber} ${asset.room?.roomNumber}`.toLowerCase();
+    return (!search || haystack.includes(filterText)) && (status === "All" || asset.status === status);
+  });
+  const visibleInventory = inventory.filter((item) => {
+    const haystack = `${item.sku} ${item.name} ${item.category} ${item.room?.roomNumber} ${item.qrCode}`.toLowerCase();
+    return !search || haystack.includes(filterText);
+  });
+  const visibleApprovals = approvals.filter((approval) => {
+    const haystack = `${approval.entity} ${approval.level} ${approval.approver} ${approval.status} ${approval.remarks}`.toLowerCase();
+    return (!search || haystack.includes(filterText)) && (status === "All" || approval.status === status);
+  });
+  const visibleHistory = history.filter((item) => {
+    const haystack = `${item.entity} ${item.action} ${item.actor} ${item.details}`.toLowerCase();
+    return !search || haystack.includes(filterText);
+  });
+  const activePanel =
+    view === "housing-bookings" ? "bookings" :
+    view === "housing-inspections" ? "inspections" :
+    view === "housing-assets" ? "assets" :
+    view === "housing-inventory" ? "inventory" :
+    view === "housing-approvals" ? "approvals" :
+    view === "housing-notifications" ? "notifications" :
+    view === "housing-reports" ? "reports" : "dashboard";
+  const canReceptionAllocate = String(userRole || "").toLowerCase().includes("reception") || userRole === "Admin";
+  const currentApprovalFor = (booking: any) => (booking.approvals || []).find((approval: any) => approval.status === "PENDING");
+  const approvalAction = (approval: any, action: "APPROVED" | "REJECTED" | "RETURNED") => {
+    const label = action === "RETURNED" ? "Return for correction" : action === "REJECTED" ? "Reject" : "Approve";
+    const remarks = window.prompt(`${label} comments`, action === "APPROVED" ? "Reviewed and accepted" : "");
+    if (remarks === null) return;
+    updateHousing("approval", approval.id, { action, remarks, status: action });
+  };
+  const runAlertChecks = async () => {
+    setRunningAlerts(true);
+    await fetch("/api/housing/alerts", { method: "POST" });
+    await refreshData();
+    setRunningAlerts(false);
+  };
+
+  return (
+    <section className="grid gap-5">
+      <Panel title="Housing Operations Command" icon={Building2}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <HousingKpi label="Available Rooms" value={String(availableRooms)} detail="ready for allocation" onClick={() => setStatus("AVAILABLE")} />
+          <HousingKpi label="Occupied Rooms" value={String(occupiedRooms)} detail={`${capacity ? Math.round((occupancy / capacity) * 100) : 0}% bed occupancy`} onClick={() => setStatus("OCCUPIED")} />
+          <HousingKpi label="Vacant Rooms" value={String(vacantRooms)} detail="empty and assignable" onClick={() => setStatus("AVAILABLE")} />
+          <HousingKpi label="Blocked Rooms" value={String(blockedRooms)} detail="blocked for allocation" onClick={() => setStatus("BLOCKED")} />
+          <HousingKpi label="Under Maintenance" value={String(maintenanceRooms)} detail="repair or shutdown" onClick={() => setStatus("MAINTENANCE")} />
+          <HousingKpi label="Check-ins Today" value={String(checkInsToday)} detail="scheduled arrivals" onClick={() => setStatus("CHECKED_IN")} />
+          <HousingKpi label="Check-outs Today" value={String(checkOutsToday)} detail="scheduled departures" onClick={() => setStatus("CHECKED_OUT")} />
+          <HousingKpi label="Pending Approvals" value={String(openApprovals)} detail="requires action" onClick={() => setStatus("PENDING")} />
+          <HousingKpi label="Ticket Summary" value={String(ticketSummary.reduce((sum, item) => sum + item.value, 0))} detail="requests and findings" />
+          <HousingKpi label="Asset Status" value={String(dashboardAssets.length)} detail={`${assetStatusSummary.length} active statuses`} />
+          <HousingKpi label="Housekeeping" value={String(housekeepingOpen)} detail="open housekeeping checks" />
+          <HousingKpi label="Safety / Incidents" value={String(safetyObservations)} detail="observations requiring review" />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
+            <Search size={16} className="text-slate-400" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search housing rooms, residents, bookings" className="h-11 w-full text-sm outline-none" />
+          </div>
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option>All</option>
+            <option>REQUESTED</option>
+            <option>PENDING_APPROVAL</option>
+            <option>APPROVED</option>
+            <option>CHECKED_IN</option>
+            <option>CHECKED_OUT</option>
+            <option>REJECTED</option>
+            <option>AVAILABLE</option>
+            <option>RESERVED</option>
+            <option>OCCUPIED</option>
+            <option>MAINTENANCE</option>
+            <option>SCHEDULED</option>
+            <option>PASSED</option>
+            <option>FAILED</option>
+            <option>ACTIVE</option>
+            <option>PENDING</option>
+            <option>WAITING</option>
+            <option>RETURNED</option>
+          </select>
+          <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option>All</option>
+            {dashboardCompanies.map((company) => <option key={company}>{company}</option>)}
+          </select>
+          <select value={buildingFilter} onChange={(event) => setBuildingFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option>All</option>
+            {dashboardBuildings.map((building) => <option key={building}>{building}</option>)}
+          </select>
+          <select value={floorFilter} onChange={(event) => setFloorFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option>All</option>
+            {dashboardFloors.map((floor) => <option key={floor}>{floor}</option>)}
+          </select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold">
+            <option>All</option>
+            {dashboardCategories.map((category) => <option key={category}>{category}</option>)}
+          </select>
+          <input value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} type="date" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold" />
+          <input value={dateTo} onChange={(event) => setDateTo(event.target.value)} type="date" className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold" />
+          <ReportButtons type="housing-dashboard" label="Housing dashboard PDF" />
+        </div>
+      </Panel>
+
+      {activePanel === "dashboard" && (
+        <section className="grid gap-5">
+          <div className="grid gap-5 xl:grid-cols-3">
+            <HousingChart title="Company-wise Occupancy" data={companyOccupancyData} dataKey="value" />
+            <HousingChart title="Building-wise Occupancy" data={buildingOccupancyData} dataKey="occupancy" suffix="%" />
+            <HousingChart title="Room Category Occupancy" data={categoryOccupancyData} dataKey="occupancy" suffix="%" />
+          </div>
+          <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+            <HousingTable
+              title="Accommodation & Occupancy Drill-down"
+              rows={dashboardRooms}
+              columns={[["code", "Code"], ["roomNumber", "Room"], ["roomType", "Type"], ["floor", "Floor"], ["occupancy", "Occ"], ["capacity", "Cap"], ["status", "Status"], ["qrCode", "QR"]]}
+              onSelect={(record) => setSelected({ type: "room", record })}
+              reportType="housing-rooms"
+            />
+            <div className="grid gap-5">
+              <HousingSummaryTable title="Ticket Summary" rows={ticketSummary} />
+              <HousingSummaryTable title="Asset Status Summary" rows={assetStatusSummary.map((item) => ({ metric: item.name, value: item.value, status: "Assets" }))} />
+              <HousingSummaryTable title="Housekeeping Status Summary" rows={housekeepingSummary} />
+              <HousingSummaryTable title="Pending Approvals Summary" rows={[{ metric: "Pending approvals", value: openApprovals, status: "Pending" }]} />
+              <HousingSummaryTable title="Safety Observations & Incidents" rows={[{ metric: "Open observations / incidents", value: safetyObservations, status: safetyObservations ? "Action" : "Clear" }]} />
+            </div>
+          </div>
+          <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
+            <HousingTable
+              title="Today Check-in / Check-out Movement"
+              rows={todayMovements}
+              columns={[["movement", "Movement"], ["bookingNo", "Booking"], ["residentName", "Resident"], ["departmentCode", "Company / Dept"], ["status", "Status"], ["priority", "Priority"]]}
+              onSelect={(record) => setSelected({ type: "booking", record })}
+              reportType="housing-bookings"
+            />
+            <HousingAlerts notifications={notifications} approvals={dashboardApprovals} onApprove={(approval, action) => approvalAction(approval, action as any)} canApprove={canApprove} />
+          </div>
+          {canManage && <HousingSetupForms properties={housing.properties ?? []} blocks={housing.blocks ?? []} rooms={rooms} saving={saving} onSubmit={submitHousing} />}
+        </section>
+      )}
+
+      {activePanel === "bookings" && (
+        <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+          <div className="grid gap-3">
+            {canManage && (
+              <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                <button type="button" onClick={() => visibleBookings.filter((booking) => booking.status === "APPROVED").forEach((booking) => updateHousing("booking", booking.id, { status: "CHECKED_IN", notes: "Bulk check-in completed" }))} className="rounded-lg bg-lagoon px-4 py-2 text-xs font-black text-white">Bulk Check-in Approved</button>
+                <button type="button" onClick={() => visibleBookings.filter((booking) => booking.status === "CHECKED_IN").forEach((booking) => updateHousing("booking", booking.id, { status: "CHECKED_OUT", checkOut: new Date().toISOString(), notes: "Bulk check-out completed" }))} className="rounded-lg bg-ink px-4 py-2 text-xs font-black text-white">Bulk Check-out Active</button>
+                <button type="button" onClick={() => visibleBookings.filter((booking) => booking.status === "PENDING_APPROVAL").forEach((booking) => updateHousing("booking", booking.id, { status: "NO_SHOW", noShowAt: new Date().toISOString(), notes: "Marked no-show in bulk review" }))} className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-black text-white">Mark Pending No-show</button>
+              </div>
+            )}
+            <HousingTable
+              title="Accommodation & Booking Management"
+              rows={visibleBookings}
+              columns={[["bookingNo", "Booking"], ["employeeId", "Employee ID"], ["residentName", "Employee"], ["companyName", "Company"], ["gender", "Gender"], ["buildingNumber", "Building"], ["floorNumber", "Floor"], ["roomNumber", "Room"], ["bedNumber", "Bed"], ["bookingType", "Type"], ["allocationType", "Allocation"], ["status", "Status"], ["priority", "Priority"]]}
+              onSelect={(record) => setSelected({ type: "booking", record })}
+              reportType="housing-bookings"
+              actions={(record) => canApprove && (
+                <div className="flex flex-wrap gap-2">
+                  {currentApprovalFor(record) && <button type="button" onClick={(event) => { event.stopPropagation(); approvalAction(currentApprovalFor(record), "APPROVED"); }} className="rounded-lg bg-leaf px-3 py-2 text-xs font-black text-white">Approve Step</button>}
+                  {currentApprovalFor(record) && <button type="button" onClick={(event) => { event.stopPropagation(); approvalAction(currentApprovalFor(record), "RETURNED"); }} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white">Return</button>}
+                  {canReceptionAllocate && record.status === "APPROVED" && <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("booking", record.id, { status: "CHECKED_IN", keyHandoverBy: "Reception Team", keyHandoverAt: new Date().toISOString() }); }} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Allocate</button>}
+                  <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("booking", record.id, { status: "CHECKED_OUT", checkOut: new Date().toISOString() }); }} className="rounded-lg bg-ink px-3 py-2 text-xs font-black text-white">Check-out</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("booking", record.id, { status: "CANCELLED", cancellationReason: "Cancelled by housing admin" }); }} className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white">Cancel</button>
+                </div>
+              )}
+            />
+          </div>
+          {canManage && <HousingBookingForm rooms={rooms} beds={housing.beds ?? []} residents={housing.residents ?? []} saving={saving} onSubmit={submitHousing} />}
+        </section>
+      )}
+
+      {activePanel === "inspections" && (
+        <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+          <HousingTable
+            title="Room Inspection Management"
+            rows={visibleInspections}
+            columns={[["inspectionNo", "Inspection"], ["inspectionType", "Type"], ["occupantName", "Occupant"], ["assetId", "Asset"], ["damageFound", "Damage"], ["missingAssetFound", "Missing"], ["estimatedRepairCost", "Repair Cost"], ["maintenanceTicketNo", "Ticket"], ["status", "Status"], ["score", "Score"], ["dueAt", "Due"]]}
+            onSelect={(record) => setSelected({ type: "inspection", record })}
+            reportType="housing-inspections"
+            actions={(record) => canManage && <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("inspection", record.id, { status: "CLOSED", completedAt: new Date().toISOString() }); }} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Close</button>}
+          />
+          {canManage && <HousingInspectionForm rooms={rooms} beds={housing.beds ?? []} bookings={bookings} assets={assets} saving={saving} onSubmit={submitHousing} />}
+        </section>
+      )}
+
+      {activePanel === "assets" && (
+        <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+          <HousingTable
+            title="Housing Asset Management"
+            rows={visibleAssets}
+            columns={[["tag", "Asset Code"], ["qrCode", "QR"], ["description", "Description"], ["category", "Category"], ["brand", "Brand"], ["model", "Model"], ["serialNumber", "Serial"], ["buildingLocation", "Building"], ["roomLocation", "Room"], ["status", "Status"], ["custodianName", "Custodian"], ["warrantyExpiry", "Warranty"], ["currentValue", "Current Value"]]}
+            onSelect={(record) => setSelected({ type: "asset", record })}
+            reportType="housing-assets"
+            actions={(record) => canManage && (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("asset", record.id, { status: "INSTALLED", issuedAt: new Date().toISOString(), movementAction: "Asset issuance" }); }} className="rounded-lg bg-leaf px-3 py-2 text-xs font-black text-white">Issue</button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("asset", record.id, { status: "TRANSFERRED", transferredAt: new Date().toISOString(), transferredFrom: record.roomLocation || record.room?.roomNumber || "", transferredTo: "Transfer pending location", movementAction: "Asset transfer" }); }} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Transfer</button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("asset", record.id, { status: "UNDER_REPAIR", replacementOf: record.tag, replacedAt: new Date().toISOString(), movementAction: "Asset replacement" }); }} className="rounded-lg bg-ink px-3 py-2 text-xs font-black text-white">Replace</button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("asset", record.id, { status: "MISSING", movementAction: "Missing asset tracking" }); }} className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white">Missing</button>
+              </div>
+            )}
+          />
+          {canManage && <HousingAssetForm rooms={rooms} saving={saving} onSubmit={submitHousing} />}
+        </section>
+      )}
+
+      {activePanel === "inventory" && (
+        <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
+          <HousingTable
+            title="Housing Inventory Management"
+            rows={visibleInventory}
+            columns={[["sku", "SKU"], ["name", "Name"], ["category", "Category"], ["onHand", "On Hand"], ["minimumStock", "Minimum"], ["reorderPoint", "Reorder"], ["unit", "Unit"], ["supplierName", "Supplier"], ["expiryDate", "Expiry"], ["purchaseRequestStatus", "PR Status"], ["lastMovementType", "Last Move"]]}
+            onSelect={(record) => setSelected({ type: "inventory", record })}
+            reportType="housing-inventory"
+            actions={(record) => canManage && (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("inventory", record.id, { movementType: "RECEIPT", movementQty: 1 }); }} className="rounded-lg bg-leaf px-3 py-2 text-xs font-black text-white">Receipt +1</button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("inventory", record.id, { movementType: "ISSUE", movementQty: 1 }); }} className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white">Issue -1</button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("inventory", record.id, { movementType: "TRANSFER", movementQty: 0, transferFrom: record.storeLocation || record.room?.roomNumber || "", transferTo: "Transfer pending location" }); }} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Transfer</button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("inventory", record.id, { generatePurchaseRequest: true, purchaseRequestStatus: "REQUESTED" }); }} className="rounded-lg bg-ink px-3 py-2 text-xs font-black text-white">Create PR</button>
+              </div>
+            )}
+          />
+          {canManage && <HousingInventoryForm rooms={rooms} saving={saving} onSubmit={submitHousing} />}
+        </section>
+      )}
+
+      {activePanel === "approvals" && (
+        <section className="grid gap-5 xl:grid-cols-2">
+          <HousingAlerts notifications={notifications} approvals={visibleApprovals} onApprove={(approval, action) => approvalAction(approval, action as any)} canApprove={canApprove} />
+          <HousingTable title="Housing History & Audit Trail" rows={visibleHistory} columns={[["entity", "Entity"], ["action", "Action"], ["actor", "Actor"], ["details", "Details"], ["createdAt", "Time"]]} reportType="housing-history" />
+        </section>
+      )}
+
+      {activePanel === "notifications" && (
+        <section className="grid gap-5 xl:grid-cols-[1fr_420px]">
+          <div className="grid gap-5">
+            <Panel title="Automatic Notifications & Alerts" icon={AlertTriangle}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-slate-500">Daily scheduler endpoint</p>
+                  <p className="font-black text-ink">POST /api/housing/alerts</p>
+                </div>
+                <button type="button" onClick={runAlertChecks} disabled={runningAlerts} className="rounded-lg bg-lagoon px-4 py-2 text-sm font-black text-white disabled:bg-slate-400">{runningAlerts ? "Running..." : "Run Alert Check"}</button>
+              </div>
+            </Panel>
+            <HousingTable
+              title="Notification History"
+              rows={notifications}
+              columns={[["alertType", "Alert"], ["channel", "Channel"], ["role", "Role"], ["title", "Title"], ["recipient", "Recipient"], ["severity", "Severity"], ["status", "Status"], ["sentAt", "Sent"], ["createdAt", "Created"]]}
+              onSelect={(record) => setSelected({ type: "notification", record })}
+              reportType="housing-notifications"
+              actions={(record) => canManage && <button type="button" onClick={(event) => { event.stopPropagation(); updateHousing("notification", record.id, { read: true, status: "SENT" }); }} className="rounded-lg bg-leaf px-3 py-2 text-xs font-black text-white">Mark Sent</button>}
+            />
+          </div>
+          <HousingNotificationSettings settings={notificationSettings} saving={saving} canManage={canManage} onSubmit={submitHousing} onUpdate={(id, body) => updateHousing("notification-setting", id, body)} />
+        </section>
+      )}
+
+      {activePanel === "reports" && (
+        <HousingReportsWorkspace rooms={rooms} bookings={bookings} />
+      )}
+
+      {selected && (
+        <HousingPreviewModal
+          type={selected.type}
+          record={selected.record}
+          history={history.filter((item) => item.entityId === selected.record.id || item.roomId === selected.record.id || item.bookingId === selected.record.id)}
+          canManage={canManage}
+          onClose={() => setSelected(null)}
+          onDelete={() => {
+            deleteHousing(selected.type, selected.record.id);
+            setSelected(null);
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+function HousingKpi({ label, value, detail, onClick }: { label: string; value: string; detail: string; onClick?: () => void }) {
+  const className = "rounded-lg border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-lagoon/40 hover:shadow-lift";
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        <p className="text-sm font-bold text-slate-500">{label}</p>
+        <p className="mt-2 text-3xl font-black">{value}</p>
+        <p className="mt-1 text-sm font-bold text-lagoon">{detail}</p>
+      </button>
+    );
+  }
+  return (
+    <div className={className}>
+      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-black">{value}</p>
+      <p className="mt-1 text-sm font-bold text-lagoon">{detail}</p>
+    </div>
+  );
+}
+
+function HousingChart({ title, data, dataKey, suffix = "" }: { title: string; data: any[]; dataKey: string; suffix?: string }) {
+  const chartData = data.length ? data.slice(0, 8) : [{ name: "No data", [dataKey]: 0 }];
+  return (
+    <Panel title={title} icon={Gauge}>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 10, right: 10, left: -18, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} height={52} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip formatter={(value) => [`${value}${suffix}`, title]} />
+            <Bar dataKey={dataKey} radius={[6, 6, 0, 0]} fill="#0f8b8d" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </Panel>
+  );
+}
+
+function HousingSummaryTable({ title, rows }: { title: string; rows: Array<{ metric: string; value: number; status: string }> }) {
+  return (
+    <Panel title={title} icon={TicketCheck}>
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        {rows.map((row) => (
+          <div key={`${title}-${row.metric}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-slate-100 px-3 py-3 last:border-b-0">
+            <span className="text-sm font-bold text-slate-700">{row.metric}</span>
+            <span className="text-lg font-black text-ink">{row.value}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black uppercase text-slate-600">{row.status}</span>
+          </div>
+        ))}
+        {!rows.length && <div className="px-3 py-6 text-center text-sm font-bold text-slate-500">No summary records found.</div>}
+      </div>
+    </Panel>
+  );
+}
+
+function HousingTable({ title, rows, columns, onSelect, actions, reportType }: { title: string; rows: any[]; columns: [string, string][]; onSelect?: (record: any) => void; actions?: (record: any) => any; reportType: string }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visibleRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rows.length, reportType]);
+
+  return (
+    <Panel title={title} icon={Building2}>
+      <ReportButtons type={reportType} label={`${title} report`} />
+      <div className="mt-4 max-w-full overflow-auto rounded-lg border border-slate-200 scrollbar-thin">
+        <table className="min-w-[900px] bg-white text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+            <tr>
+              <th className="px-3 py-3">#</th>
+              {columns.map(([, label]) => <th key={label} className="px-3 py-3">{label}</th>)}
+              {actions && <th className="px-3 py-3">Actions</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, index) => (
+              <tr key={row.id ?? index} onClick={() => onSelect?.(row)} className="cursor-pointer border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-3 py-3 font-black text-slate-500">{(safePage - 1) * PAGE_SIZE + index + 1}</td>
+                {columns.map(([key]) => <td key={key} className="max-w-[260px] px-3 py-3"><HousingCellValue value={key.includes("At") || key.includes("Date") || key === "dueAt" || key === "checkIn" ? formatDateCell(row[key]) : row[key]} /></td>)}
+                {actions && <td className="px-3 py-3">{actions(row)}</td>}
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan={columns.length + 2} className="px-3 py-6 text-center font-bold text-slate-500">No housing records found.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">
+        <span>Page {safePage} of {totalPages} / {rows.length} entries / {PAGE_SIZE} per page</span>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={safePage === 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-lg border border-slate-200 bg-white px-3 py-2 disabled:opacity-50">Previous</button>
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => {
+            const pageNumber = Math.min(totalPages, Math.max(1, safePage - 2) + index);
+            return (
+              <button key={`${reportType}-${pageNumber}`} type="button" onClick={() => setPage(pageNumber)} className={`rounded-lg px-3 py-2 ${safePage === pageNumber ? "bg-lagoon text-white" : "border border-slate-200 bg-white"}`}>
+                {pageNumber}
+              </button>
+            );
+          })}
+          <button type="button" disabled={safePage === totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))} className="rounded-lg border border-slate-200 bg-white px-3 py-2 disabled:opacity-50">Next</button>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function HousingReportsWorkspace({ rooms, bookings }: { rooms: any[]; bookings: any[] }) {
+  const reportGroups = [
+    { group: "Occupancy Reports", reports: [["housing-occupancy-daily", "Daily occupancy report"], ["housing-occupancy-weekly", "Weekly occupancy report"], ["housing-occupancy-monthly", "Monthly occupancy report"], ["housing-company-occupancy", "Company-wise occupancy report"], ["housing-building-occupancy", "Building-wise occupancy report"], ["housing-bed-occupancy", "Bed-wise occupancy report"], ["housing-room-utilization", "Room utilization report"]] },
+    { group: "Asset Reports", reports: [["housing-missing-assets", "Missing asset report"], ["housing-damaged-assets", "Damaged asset report"], ["housing-asset-transfers", "Asset transfer report"], ["housing-asset-depreciation", "Asset depreciation report"], ["housing-asset-audit", "Asset audit report"]] },
+    { group: "Maintenance Reports", reports: [["housing-maintenance-open", "Open ticket report"], ["housing-maintenance-closed", "Closed ticket report"], ["housing-maintenance-delayed", "Delayed ticket report"], ["housing-preventive-maintenance", "Preventive maintenance report"], ["housing-technician-performance", "Technician performance report"]] },
+    { group: "Housekeeping Reports", reports: [["housing-cleaning-daily", "Daily cleaning report"], ["housing-deep-cleaning", "Deep cleaning report"], ["housing-inspection-report", "Inspection report"], ["housing-room-readiness", "Room readiness report"]] },
+  ];
+  const flatReports = reportGroups.flatMap((group) => group.reports.map(([type, label]) => ({ type, label, group: group.group })));
+  const [type, setType] = useState(flatReports[0].type);
+  const [rows, setRows] = useState<any[]>([]);
+  const [filters, setFilters] = useState({ dateFrom: "", dateTo: "", company: "", building: "", floor: "", room: "", status: "" });
+  const companies = Array.from(new Set(bookings.map((booking) => booking.companyName || booking.resident?.companyName || booking.departmentCode).filter(Boolean))).sort();
+  const buildings = Array.from(new Set(rooms.map((room) => room.block?.name || room.property?.name).filter(Boolean))).sort();
+  const floors = Array.from(new Set(rooms.map((room) => String(room.floor || "")).filter(Boolean))).sort();
+  const roomNumbers = Array.from(new Set(rooms.map((room) => String(room.roomNumber || "")).filter(Boolean))).sort();
+  const current = flatReports.find((report) => report.type === type) || flatReports[0];
+  const columns = rows[0] ? Object.keys(rows[0]).slice(0, 12).map((key) => [key, key.replace(/([A-Z])/g, " $1")] as [string, string]) : [];
+  const url = (format: string) => {
+    const params = new URLSearchParams({ type, format });
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    return `/api/reports?${params.toString()}`;
+  };
+  async function preview(nextType = type) {
+    const response = await fetch(urlFor(nextType, "preview", filters), { cache: "no-store" });
+    const result = await response.json();
+    setRows(result.rows ?? []);
+  }
+  function urlFor(nextType: string, format: string, nextFilters = filters) {
+    const params = new URLSearchParams({ type: nextType, format });
+    Object.entries(nextFilters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    return `/api/reports?${params.toString()}`;
+  }
+  useEffect(() => {
+    preview(type);
+  }, []);
+  return (
+    <section className="grid gap-5">
+      <Panel title="Housing Reports" icon={Gauge}>
+        <div className="grid gap-4 xl:grid-cols-[340px_1fr]">
+          <div className="grid gap-3">
+            {reportGroups.map((group) => (
+              <div key={group.group} className="rounded-lg border border-slate-200 bg-white p-3">
+                <p className="text-sm font-black text-slate-500">{group.group}</p>
+                <div className="mt-2 grid gap-2">
+                  {group.reports.map(([reportType, label]) => (
+                    <button key={reportType} type="button" onClick={() => { setType(reportType); preview(reportType); }} className={`rounded-lg px-3 py-2 text-left text-sm font-black ${type === reportType ? "bg-lagoon text-white" : "bg-slate-50 text-ink hover:bg-slate-100"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase text-lagoon">{current.group}</p>
+                  <h3 className="text-2xl font-black">{current.label}</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a className="rounded-lg bg-lagoon px-4 py-2 text-sm font-black text-white" href={url("csv")}>CSV</a>
+                  <a className="rounded-lg bg-coral px-4 py-2 text-sm font-black text-white" href={url("pdf")}>PDF</a>
+                  <a className="rounded-lg bg-ink px-4 py-2 text-sm font-black text-white" href={url("html")} target="_blank" rel="noreferrer">Print</a>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-7">
+                <input value={filters.dateFrom} onChange={(event) => setFilters((current) => ({ ...current, dateFrom: event.target.value }))} type="date" className={HOUSING_FIELD_CLASS} />
+                <input value={filters.dateTo} onChange={(event) => setFilters((current) => ({ ...current, dateTo: event.target.value }))} type="date" className={HOUSING_FIELD_CLASS} />
+                <select value={filters.company} onChange={(event) => setFilters((current) => ({ ...current, company: event.target.value }))} className={HOUSING_FIELD_CLASS}><option value="">Company</option>{companies.map((item) => <option key={item}>{item}</option>)}</select>
+                <select value={filters.building} onChange={(event) => setFilters((current) => ({ ...current, building: event.target.value }))} className={HOUSING_FIELD_CLASS}><option value="">Building</option>{buildings.map((item) => <option key={item}>{item}</option>)}</select>
+                <select value={filters.floor} onChange={(event) => setFilters((current) => ({ ...current, floor: event.target.value }))} className={HOUSING_FIELD_CLASS}><option value="">Floor</option>{floors.map((item) => <option key={item}>{item}</option>)}</select>
+                <select value={filters.room} onChange={(event) => setFilters((current) => ({ ...current, room: event.target.value }))} className={HOUSING_FIELD_CLASS}><option value="">Room</option>{roomNumbers.map((item) => <option key={item}>{item}</option>)}</select>
+                <input value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} placeholder="Status" className={HOUSING_FIELD_CLASS} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => preview(type)} className="rounded-lg bg-ink px-4 py-2 text-sm font-black text-white">Apply Filters</button>
+                <button type="button" onClick={() => { const empty = { dateFrom: "", dateTo: "", company: "", building: "", floor: "", room: "", status: "" }; setFilters(empty); preview(type); }} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-black">Clear</button>
+              </div>
+            </div>
+            <HousingTable title={`${current.label} Preview`} rows={rows} columns={columns} reportType={type} />
+          </div>
+        </div>
+      </Panel>
+    </section>
+  );
+}
+
+function HousingCellValue({ value }: { value: any }) {
+  if (typeof value === "string") {
+    const status = value.toUpperCase();
+    if (["AVAILABLE", "APPROVED", "PASSED", "CHECKED_IN", "ACTIVE"].includes(status)) return <span className="rounded-lg bg-leaf/10 px-2 py-1 font-black text-leaf">{value}</span>;
+    if (["REQUESTED", "PENDING", "WAITING", "PENDING_APPROVAL", "SCHEDULED", "RESERVED"].includes(status)) return <span className="rounded-lg bg-amber-100 px-2 py-1 font-black text-amber-700">{value}</span>;
+    if (["OCCUPIED", "IN_PROGRESS", "CHECKED_OUT", "CLOSED"].includes(status)) return <span className="rounded-lg bg-lagoon/10 px-2 py-1 font-black text-lagoon">{value}</span>;
+    if (["REJECTED", "RETURNED", "CANCELLED", "FAILED", "MAINTENANCE", "BLOCKED", "CRITICAL", "HIGH"].includes(status)) return <span className="rounded-lg bg-coral/10 px-2 py-1 font-black text-coral">{value}</span>;
+  }
+  return <CellValue value={value} />;
+}
+
+function HousingAlerts({ notifications, approvals, onApprove, canApprove }: { notifications: any[]; approvals: any[]; onApprove: (approval: any, action: string) => void; canApprove: boolean }) {
+  return (
+    <Panel title="Approval Workflow, Notifications & Alerts" icon={AlertTriangle}>
+      <div className="grid gap-3">
+        {approvals.slice(0, 6).map((approval) => (
+          <div key={approval.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-black">{approval.level}</p>
+                <p className="text-sm font-bold text-slate-500">Step {approval.step || 1} / {approval.entity} / {approval.status}</p>
+                {approval.remarks && <p className="mt-1 text-xs font-bold text-slate-500">{approval.remarks}</p>}
+              </div>
+              {canApprove && approval.status === "PENDING" && (
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => onApprove(approval, "APPROVED")} className="rounded-lg bg-leaf px-3 py-2 text-xs font-black text-white">Approve</button>
+                  <button type="button" onClick={() => onApprove(approval, "RETURNED")} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white">Return</button>
+                  <button type="button" onClick={() => onApprove(approval, "REJECTED")} className="rounded-lg bg-coral px-3 py-2 text-xs font-black text-white">Reject</button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {notifications.slice(0, 6).map((notification) => (
+          <div key={notification.id} className="rounded-lg bg-amber-50 p-3 text-sm">
+            <p className="font-black text-amber-800">{notification.title}</p>
+            <p className="mt-1 font-bold text-amber-900/80">{notification.message}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function HousingNotificationSettings({ settings, saving, canManage, onSubmit, onUpdate }: { settings: any[]; saving: boolean; canManage: boolean; onSubmit: (formData: FormData) => void; onUpdate: (id: string, body: Record<string, unknown>) => void }) {
+  return (
+    <Panel title="Notification Settings" icon={ShieldCheck}>
+      <div className="grid gap-3">
+        {settings.map((setting) => (
+          <div key={setting.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-black">{setting.label}</p>
+                <p className="text-xs font-bold text-slate-500">{setting.alertType}</p>
+                <p className="mt-1 text-sm text-slate-600">{setting.description}</p>
+              </div>
+              <span className={`rounded-lg px-2 py-1 text-xs font-black ${setting.enabled ? "bg-leaf/10 text-leaf" : "bg-slate-100 text-slate-500"}`}>{setting.enabled ? "Enabled" : "Disabled"}</span>
+            </div>
+            <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600">
+              <span>Roles: {setting.roles}</span>
+              <span>Channels: {setting.channels}</span>
+              <span>Lead days: {setting.leadDays} / Threshold days: {setting.thresholdDays}</span>
+            </div>
+            {canManage && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => onUpdate(setting.id, { enabled: !setting.enabled })} className={`rounded-lg px-3 py-2 text-xs font-black text-white ${setting.enabled ? "bg-coral" : "bg-leaf"}`}>{setting.enabled ? "Disable" : "Enable"}</button>
+                <button type="button" onClick={() => onUpdate(setting.id, { channels: "SYSTEM,EMAIL,SMS,WHATSAPP" })} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">All Channels</button>
+                <button type="button" onClick={() => onUpdate(setting.id, { channels: "SYSTEM" })} className="rounded-lg bg-ink px-3 py-2 text-xs font-black text-white">System Only</button>
+              </div>
+            )}
+          </div>
+        ))}
+        {canManage && (
+          <HousingForm title="Create / Update Alert Setting" type="notification-setting" saving={saving} onSubmit={onSubmit}>
+            <input name="alertType" placeholder="Alert type code" className={HOUSING_FIELD_CLASS} />
+            <input name="label" placeholder="Alert label" className={HOUSING_FIELD_CLASS} />
+            <textarea name="description" placeholder="Alert description" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            <input name="roles" placeholder="Role-wise assignment, comma separated" className={HOUSING_FIELD_CLASS} />
+            <input name="channels" placeholder="Channels: SYSTEM,EMAIL,SMS,WHATSAPP" className={HOUSING_FIELD_CLASS} />
+            <div className="grid gap-3 md:grid-cols-2">
+              <input name="leadDays" type="number" min="0" placeholder="Lead days" className={HOUSING_FIELD_CLASS} />
+              <input name="thresholdDays" type="number" min="0" placeholder="Threshold days" className={HOUSING_FIELD_CLASS} />
+            </div>
+            <select name="severity" className={HOUSING_FIELD_CLASS}>
+              <option>LOW</option>
+              <option>MEDIUM</option>
+              <option>HIGH</option>
+              <option>CRITICAL</option>
+            </select>
+            <label className="flex items-center gap-2 rounded-lg bg-leaf/10 p-3 text-sm font-black text-leaf">
+              <input type="checkbox" name="enabled" defaultChecked />
+              Enabled
+            </label>
+          </HousingForm>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function HousingSetupForms({ properties, blocks, rooms, saving, onSubmit }: { properties: any[]; blocks: any[]; rooms: any[]; saving: boolean; onSubmit: (formData: FormData) => void }) {
+  const [setupType, setSetupType] = useState("room");
+  return (
+    <Panel title="Housing Setup & Master Data" icon={Building2}>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {[
+          ["property", "Property / Camp"],
+          ["block", "Building / Block"],
+          ["room", "Room"],
+          ["bed", "Bed"],
+          ["resident", "Employee / Occupant"],
+        ].map(([type, label]) => (
+          <button key={type} type="button" onClick={() => setSetupType(type)} className={`rounded-lg px-3 py-2 text-sm font-black ${setupType === type ? "bg-lagoon text-white" : "bg-slate-50 text-slate-600"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {setupType === "property" && (
+        <HousingForm title="Create Housing Property / Camp" type="property" saving={saving} onSubmit={onSubmit}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <input name="code" placeholder="Property code" className={HOUSING_FIELD_CLASS} />
+            <input name="name" placeholder="Property / camp name" className={HOUSING_FIELD_CLASS} />
+            <input name="site" placeholder="Site" className={HOUSING_FIELD_CLASS} />
+            <input name="city" placeholder="City" className={HOUSING_FIELD_CLASS} />
+            <input name="manager" placeholder="Housing manager" className={HOUSING_FIELD_CLASS} />
+          </div>
+        </HousingForm>
+      )}
+      {setupType === "block" && (
+        <HousingForm title="Create Building / Block" type="block" saving={saving} onSubmit={onSubmit}>
+          <select name="propertyId" className={HOUSING_FIELD_CLASS}>
+            <option value="">Select property / camp</option>
+            {properties.map((property) => <option key={property.id} value={property.id}>{property.code} / {property.name}</option>)}
+          </select>
+          <div className="grid gap-3 md:grid-cols-3">
+            <input name="code" placeholder="Block code" className={HOUSING_FIELD_CLASS} />
+            <input name="name" placeholder="Building / block name" className={HOUSING_FIELD_CLASS} />
+            <input name="capacity" type="number" min="1" placeholder="Floors" className={HOUSING_FIELD_CLASS} />
+          </div>
+        </HousingForm>
+      )}
+      {setupType === "room" && (
+        <HousingForm title="Create Room & Auto Beds" type="room" saving={saving} onSubmit={onSubmit}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <select name="propertyId" className={HOUSING_FIELD_CLASS}>
+              <option value="">Select property / camp</option>
+              {properties.map((property) => <option key={property.id} value={property.id}>{property.code} / {property.name}</option>)}
+            </select>
+            <select name="blockId" className={HOUSING_FIELD_CLASS}>
+              <option value="">Select building / block</option>
+              {blocks.map((block) => <option key={block.id} value={block.id}>{block.code} / {block.name}</option>)}
+            </select>
+            <input name="code" placeholder="Room code" className={HOUSING_FIELD_CLASS} />
+            <input name="roomNumber" placeholder="Room number" className={HOUSING_FIELD_CLASS} />
+            <input name="floor" placeholder="Floor" className={HOUSING_FIELD_CLASS} />
+            <select name="roomType" className={HOUSING_FIELD_CLASS}><option>Single</option><option>Shared</option><option>VIP</option><option>Visitor</option><option>Dormitory</option></select>
+            <select name="genderRestriction" className={HOUSING_FIELD_CLASS}><option>MIXED</option><option>MALE</option><option>FEMALE</option></select>
+            <input name="capacity" type="number" min="1" placeholder="Bed capacity" className={HOUSING_FIELD_CLASS} />
+            <select name="status" className={HOUSING_FIELD_CLASS}><option value="AVAILABLE">Available</option><option value="MAINTENANCE">Under maintenance</option><option value="BLOCKED">Blocked</option></select>
+          </div>
+          <textarea name="remarks" placeholder="Room remarks / allocation notes" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        </HousingForm>
+      )}
+      {setupType === "bed" && (
+        <HousingForm title="Create Bed" type="bed" saving={saving} onSubmit={onSubmit}>
+          <select name="roomId" className={HOUSING_FIELD_CLASS}>
+            <option value="">Select room</option>
+            {rooms.map((room) => <option key={room.id} value={room.id}>{room.property?.name} / {room.block?.name} / Floor {room.floor} / Room {room.roomNumber}</option>)}
+          </select>
+          <div className="grid gap-3 md:grid-cols-3">
+            <input name="code" placeholder="Bed code" className={HOUSING_FIELD_CLASS} />
+            <input name="label" placeholder="Bed label" className={HOUSING_FIELD_CLASS} />
+            <select name="status" className={HOUSING_FIELD_CLASS}><option>AVAILABLE</option><option>RESERVED</option><option>OCCUPIED</option><option>MAINTENANCE</option><option>BLOCKED</option></select>
+          </div>
+        </HousingForm>
+      )}
+      {setupType === "resident" && (
+        <HousingForm title="Create Employee / Occupant" type="resident" saving={saving} onSubmit={onSubmit}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <input name="residentNo" placeholder="Employee / resident number" className={HOUSING_FIELD_CLASS} />
+            <input name="residentName" placeholder="Employee / occupant name" className={HOUSING_FIELD_CLASS} />
+            <input name="email" placeholder="Email" className={HOUSING_FIELD_CLASS} />
+            <input name="phone" placeholder="Phone" className={HOUSING_FIELD_CLASS} />
+            <input name="companyId" placeholder="Company ID" className={HOUSING_FIELD_CLASS} />
+            <input name="companyName" placeholder="Company name" className={HOUSING_FIELD_CLASS} />
+            <select name="gender" className={HOUSING_FIELD_CLASS}><option value="">Gender</option><option>MALE</option><option>FEMALE</option></select>
+            <input name="nationality" placeholder="Nationality" className={HOUSING_FIELD_CLASS} />
+            <input name="departmentCode" placeholder="Department code" className={HOUSING_FIELD_CLASS} />
+            <select name="status" className={HOUSING_FIELD_CLASS}><option>ACTIVE</option><option>BLACKLISTED</option><option>INACTIVE</option></select>
+          </div>
+        </HousingForm>
+      )}
+    </Panel>
+  );
+}
+
+function HousingBookingForm({ rooms, beds, residents, saving, onSubmit }: { rooms: any[]; beds: any[]; residents: any[]; saving: boolean; onSubmit: (formData: FormData) => void }) {
+  const allocatableRooms = rooms.filter((room) => !["BLOCKED", "MAINTENANCE"].includes(room.status));
+  const allocatableBeds = beds.filter((bed) => bed.status === "AVAILABLE");
+  return (
+    <HousingForm title="Accommodation & Booking Management" type="booking" saving={saving} onSubmit={onSubmit}>
+      <select name="residentId" className={HOUSING_FIELD_CLASS}>
+        <option value="">New employee / select existing</option>
+        {residents.map((resident) => <option key={resident.id} value={resident.id}>{resident.residentNo} - {resident.name} - {resident.companyName || resident.companyId || "Company"}</option>)}
+      </select>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input name="employeeId" placeholder="Employee ID" className={HOUSING_FIELD_CLASS} />
+        <input name="residentName" placeholder="Employee name" className={HOUSING_FIELD_CLASS} />
+        <input name="companyName" placeholder="Company name" className={HOUSING_FIELD_CLASS} />
+        <input name="departmentCode" placeholder="Department" className={HOUSING_FIELD_CLASS} />
+        <input name="nationality" placeholder="Nationality" className={HOUSING_FIELD_CLASS} />
+        <input name="contactNumber" placeholder="Contact number" className={HOUSING_FIELD_CLASS} />
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <select name="gender" className={HOUSING_FIELD_CLASS}>
+          <option value="">Gender</option>
+          <option>MALE</option>
+          <option>FEMALE</option>
+        </select>
+        <select name="bookingType" className={HOUSING_FIELD_CLASS}>
+          <option value="TEMPORARY">Temporary booking</option>
+          <option value="PERMANENT">Permanent booking</option>
+        </select>
+        <select name="allocationType" className={HOUSING_FIELD_CLASS}>
+          <option value="STANDARD">Standard allocation</option>
+          <option value="VIP">VIP room allocation</option>
+          <option value="VISITOR">Visitor room allocation</option>
+        </select>
+        <select name="status" className={HOUSING_FIELD_CLASS}>
+          <option value="REQUESTED">Submit request</option>
+          <option value="PENDING_APPROVAL">Pending approval</option>
+          <option value="APPROVED">Approved / reserve bed</option>
+          <option value="CHECKED_IN">Check-in now</option>
+        </select>
+      </div>
+      <select name="roomId" className={HOUSING_FIELD_CLASS}>
+        <option value="">Select room by company / building / floor</option>
+        {allocatableRooms.map((room) => <option key={room.id} value={room.id}>{room.property?.name} / {room.block?.name} / Floor {room.floor} / Room {room.roomNumber} / {room.roomType} / {room.genderRestriction || "MIXED"} ({room.occupancy}/{room.capacity})</option>)}
+      </select>
+      <select name="bedId" className={HOUSING_FIELD_CLASS}>
+        <option value="">Auto-assign available bed</option>
+        {allocatableBeds.map((bed) => <option key={bed.id} value={bed.id}>{bed.room?.roomNumber || "Room"} / {bed.label} / available</option>)}
+      </select>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input name="buildingNumber" placeholder="Building number / override" className={HOUSING_FIELD_CLASS} />
+        <input name="floorNumber" placeholder="Floor / override" className={HOUSING_FIELD_CLASS} />
+        <input name="roomNumber" placeholder="Room number / override" className={HOUSING_FIELD_CLASS} />
+        <input name="bedNumber" placeholder="Bed number / override" className={HOUSING_FIELD_CLASS} />
+        <input name="checkIn" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+        <input name="checkOut" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input name="keyHandoverBy" placeholder="Digital room key handed over by" className={HOUSING_FIELD_CLASS} />
+        <input name="keyHandoverAt" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+        <input name="campIdNumber" placeholder="Camp ID number" className={HOUSING_FIELD_CLASS} />
+        <input name="campIdIssuedAt" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+      </div>
+      <select name="priority" className={HOUSING_FIELD_CLASS}><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
+      <ImageUploadField name="attachmentUrls" />
+      <textarea name="notes" placeholder="Booking request, transfer reason, blacklist/no-show comments, approval justification" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+    </HousingForm>
+  );
+}
+
+function HousingInspectionForm({ rooms, beds, bookings, assets, saving, onSubmit }: { rooms: any[]; beds: any[]; bookings: any[]; assets: any[]; saving: boolean; onSubmit: (formData: FormData) => void }) {
+  const conditionOptions = ["Good", "Fair", "Damaged", "Missing", "Needs Repair", "Not Applicable"];
+  const checklistFields = [
+    ["furnitureCondition", "Furniture condition"],
+    ["mattressCondition", "Mattress condition"],
+    ["bedSheetCondition", "Bed sheet condition"],
+    ["tvCondition", "TV condition"],
+    ["refrigeratorCondition", "Refrigerator condition"],
+    ["acCondition", "AC condition"],
+    ["waterLeakageCheck", "Water leakage check"],
+    ["lightingCondition", "Lighting condition"],
+    ["curtainCondition", "Curtain condition"],
+    ["doorLockCondition", "Door lock condition"],
+    ["smokeDetectorCondition", "Smoke detector condition"],
+    ["fireExtinguisherAvailability", "Fire extinguisher availability"],
+    ["bathroomCleanliness", "Bathroom cleanliness"],
+    ["generalRoomCleanliness", "General room cleanliness"],
+    ["missingAssetVerification", "Missing asset verification"],
+  ] as const;
+  return (
+    <HousingForm title="Room Inspection Management" type="inspection" saving={saving} onSubmit={onSubmit}>
+      <select name="inspectionType" className={HOUSING_FIELD_CLASS}>
+        <option>Pre-check-in inspection</option>
+        <option>Occupied room inspection</option>
+        <option>Check-out inspection</option>
+        <option>Damage inspection</option>
+        <option>Deep cleaning inspection</option>
+        <option>Monthly inspection</option>
+        <option>Safety inspection</option>
+      </select>
+      <select name="roomId" className={HOUSING_FIELD_CLASS}><option value="">Select building / room</option>{rooms.map((room) => <option key={room.id} value={room.id}>{room.property?.name} / {room.block?.name} / Floor {room.floor} / Room {room.roomNumber} / {room.roomType}</option>)}</select>
+      <select name="bedId" className={HOUSING_FIELD_CLASS}><option value="">Link bed</option>{beds.map((bed) => <option key={bed.id} value={bed.id}>{bed.room?.roomNumber || "Room"} / {bed.label} / {bed.status}</option>)}</select>
+      <select name="occupantId" className={HOUSING_FIELD_CLASS}><option value="">Link occupant / booking</option>{bookings.map((booking) => <option key={booking.id} value={booking.residentId || booking.id}>{booking.bookingNo} / {booking.residentName} / {booking.status}</option>)}</select>
+      <input name="occupantName" placeholder="Occupant name" className={HOUSING_FIELD_CLASS} />
+      <select name="assetId" className={HOUSING_FIELD_CLASS}><option value="">Link asset</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.tag} / {asset.name} / {asset.status}</option>)}</select>
+      <input name="workOrderRef" placeholder="Linked work order / reference" className={HOUSING_FIELD_CLASS} />
+      <input name="inspector" placeholder="Inspector" className={HOUSING_FIELD_CLASS} />
+      <input name="dueAt" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+      <input name="score" type="number" placeholder="Score" className={HOUSING_FIELD_CLASS} />
+      <div className="grid gap-3 md:grid-cols-2">
+        {checklistFields.map(([name, label]) => (
+          <label key={name} className="grid gap-1 text-xs font-black uppercase text-slate-500">
+            {label}
+            <select name={name} className={HOUSING_FIELD_CLASS}>
+              {conditionOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+      <div className="grid gap-3 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-700">
+        <label className="flex items-center gap-2"><input type="checkbox" name="damageFound" /> Damage found, create damage record</label>
+        <textarea name="damageReport" placeholder="Damage report" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <label className="flex items-center gap-2"><input type="checkbox" name="missingAssetFound" /> Missing asset found, mark selected asset missing</label>
+        <textarea name="missingAssetReport" placeholder="Missing asset report" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+        <label className="flex items-center gap-2"><input type="checkbox" name="repairRequired" /> Repair required</label>
+        <label className="flex items-center gap-2"><input type="checkbox" name="createMaintenanceTicket" /> Convert into maintenance ticket</label>
+        <input name="estimatedRepairCost" type="number" step="0.01" placeholder="Estimated repair cost" className={HOUSING_FIELD_CLASS} />
+        <textarea name="occupantLiability" placeholder="Occupant liability record" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+      </div>
+      <ImageUploadField name="beforePhotoUrls" />
+      <ImageUploadField name="afterPhotoUrls" />
+      <ImageUploadField name="photoUrls" />
+      <textarea name="findings" placeholder="Inspection report, findings and corrective actions" className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+    </HousingForm>
+  );
+}
+
+function HousingAssetForm({ rooms, saving, onSubmit }: { rooms: any[]; saving: boolean; onSubmit: (formData: FormData) => void }) {
+  const categories = ["Furniture", "Beds", "Mattresses", "TVs", "Refrigerators", "Air conditioners", "Curtains", "Water dispensers", "Fire extinguishers", "Smoke detectors", "Office equipment", "Housekeeping tools", "Electrical items"];
+  const statuses = ["AVAILABLE", "INSTALLED", "UNDER_REPAIR", "MISSING", "DAMAGED", "SCRAPPED", "TRANSFERRED"];
+  return (
+    <HousingForm title="Housing Asset Management" type="asset" saving={saving} onSubmit={onSubmit}>
+      <input name="tag" placeholder="Asset code" className={HOUSING_FIELD_CLASS} />
+      <input name="qrCode" placeholder="Barcode / QR code" className={HOUSING_FIELD_CLASS} />
+      <textarea name="description" placeholder="Asset description" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+      <select name="category" className={HOUSING_FIELD_CLASS}>{categories.map((category) => <option key={category}>{category}</option>)}</select>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input name="serialNumber" placeholder="Serial number" className={HOUSING_FIELD_CLASS} />
+        <input name="brand" placeholder="Brand" className={HOUSING_FIELD_CLASS} />
+        <input name="model" placeholder="Model" className={HOUSING_FIELD_CLASS} />
+        <input name="supplierName" placeholder="Supplier name" className={HOUSING_FIELD_CLASS} />
+        <input name="purchaseDate" type="date" className={HOUSING_FIELD_CLASS} />
+        <input name="warrantyExpiry" type="date" className={HOUSING_FIELD_CLASS} />
+        <input name="assetValue" type="number" step="0.01" placeholder="Asset value" className={HOUSING_FIELD_CLASS} />
+        <input name="depreciationRate" type="number" step="0.01" placeholder="Depreciation % per year" className={HOUSING_FIELD_CLASS} />
+        <input name="currentValue" type="number" step="0.01" placeholder="Current value / override" className={HOUSING_FIELD_CLASS} />
+        <select name="status" className={HOUSING_FIELD_CLASS}>{statuses.map((status) => <option key={status}>{status}</option>)}</select>
+      </div>
+      <select name="roomId" className={HOUSING_FIELD_CLASS}><option value="">Assign room / room profile</option>{rooms.map((room) => <option key={room.id} value={room.id}>{room.property?.name} / {room.block?.name} / Floor {room.floor} / Room {room.roomNumber}</option>)}</select>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input name="buildingLocation" placeholder="Building location" className={HOUSING_FIELD_CLASS} />
+        <input name="roomLocation" placeholder="Room location" className={HOUSING_FIELD_CLASS} />
+        <input name="custodianName" placeholder="Custodian name" className={HOUSING_FIELD_CLASS} />
+        <input name="custodianContact" placeholder="Custodian contact" className={HOUSING_FIELD_CLASS} />
+      </div>
+      <div className="grid gap-3 rounded-lg bg-slate-50 p-3">
+        <select name="movementAction" className={HOUSING_FIELD_CLASS}>
+          <option>Asset saved</option>
+          <option>Asset issuance</option>
+          <option>Asset transfer</option>
+          <option>Asset replacement</option>
+          <option>Missing asset tracking</option>
+          <option>Asset inspection</option>
+          <option>Preventive maintenance schedule</option>
+          <option>Warranty tracking</option>
+          <option>Depreciation tracking</option>
+        </select>
+        <div className="grid gap-3 md:grid-cols-2">
+          <input name="issuedTo" placeholder="Issued to" className={HOUSING_FIELD_CLASS} />
+          <input name="issuedAt" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+          <input name="transferredFrom" placeholder="Transferred from" className={HOUSING_FIELD_CLASS} />
+          <input name="transferredTo" placeholder="Transferred to" className={HOUSING_FIELD_CLASS} />
+          <input name="transferredAt" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+          <input name="replacementOf" placeholder="Replacement of asset code" className={HOUSING_FIELD_CLASS} />
+          <input name="replacedAt" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+          <input name="lastInspectionAt" type="datetime-local" className={HOUSING_FIELD_CLASS} />
+          <input name="pmSchedule" placeholder="Preventive maintenance schedule" className={HOUSING_FIELD_CLASS} />
+          <input name="nextPmDue" type="date" className={HOUSING_FIELD_CLASS} />
+        </div>
+      </div>
+      <ImageUploadField name="photoUrls" />
+      <textarea name="notes" placeholder="Asset audit notes / movement remarks" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+    </HousingForm>
+  );
+}
+
+function HousingInventoryForm({ rooms, saving, onSubmit }: { rooms: any[]; saving: boolean; onSubmit: (formData: FormData) => void }) {
+  const categories = ["Linen", "Pillows", "Blankets", "Cleaning materials", "Electrical spare parts", "Plumbing spare parts", "PPE items", "Office stationery", "Kitchen equipment", "Hygiene materials"];
+  return (
+    <HousingForm title="Add Housing Inventory" type="inventory" saving={saving} onSubmit={onSubmit}>
+      <input name="sku" placeholder="SKU / barcode" className={HOUSING_FIELD_CLASS} />
+      <input name="name" placeholder="Item name" className={HOUSING_FIELD_CLASS} />
+      <select name="category" className={HOUSING_FIELD_CLASS}>
+        <option value="">Inventory category</option>
+        {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+      </select>
+      <textarea name="description" placeholder="Description / item specification" className="min-h-20 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+      <select name="roomId" className={HOUSING_FIELD_CLASS}><option value="">Room / store location</option>{rooms.map((room) => <option key={room.id} value={room.id}>{room.roomNumber} / {room.roomType}</option>)}</select>
+      <input name="storeLocation" placeholder="Store / shelf / bin location" className={HOUSING_FIELD_CLASS} />
+      <div className="grid gap-3 md:grid-cols-3">
+        <input name="onHand" type="number" min="0" placeholder="Opening / adjusted stock" className={HOUSING_FIELD_CLASS} />
+        <input name="minimumStock" type="number" min="0" placeholder="Minimum stock" className={HOUSING_FIELD_CLASS} />
+        <input name="reorderPoint" type="number" min="0" placeholder="Reorder level" className={HOUSING_FIELD_CLASS} />
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input name="unit" placeholder="Unit" className={HOUSING_FIELD_CLASS} />
+        <input name="unitCost" type="number" min="0" step="0.01" placeholder="Unit cost" className={HOUSING_FIELD_CLASS} />
+        <input name="supplierName" placeholder="Supplier name" className={HOUSING_FIELD_CLASS} />
+        <input name="supplierContact" placeholder="Supplier contact" className={HOUSING_FIELD_CLASS} />
+        <input name="preferredSupplier" placeholder="Preferred supplier" className={HOUSING_FIELD_CLASS} />
+        <input name="expiryDate" type="date" className={HOUSING_FIELD_CLASS} />
+      </div>
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p className="text-sm font-black">Stock Movement</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <select name="movementType" className={HOUSING_FIELD_CLASS}>
+            <option value="ADJUSTMENT">Stock adjustment</option>
+            <option value="RECEIPT">Stock receipt</option>
+            <option value="ISSUE">Stock issue</option>
+            <option value="TRANSFER">Stock transfer</option>
+          </select>
+          <input name="movementQty" type="number" min="0" placeholder="Movement quantity" className={HOUSING_FIELD_CLASS} />
+          <input name="transferFrom" placeholder="Transfer from" className={HOUSING_FIELD_CLASS} />
+          <input name="transferTo" placeholder="Transfer to" className={HOUSING_FIELD_CLASS} />
+          <input name="movementBy" placeholder="Movement by" className={HOUSING_FIELD_CLASS} />
+          <input name="adjustmentReason" placeholder="Adjustment reason" className={HOUSING_FIELD_CLASS} />
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <input name="purchaseRequestNo" placeholder="Purchase request no." className={HOUSING_FIELD_CLASS} />
+        <select name="purchaseRequestStatus" className={HOUSING_FIELD_CLASS}>
+          <option value="">Purchase request status</option>
+          <option>REQUESTED</option>
+          <option>APPROVED</option>
+          <option>ORDERED</option>
+          <option>RECEIVED</option>
+        </select>
+      </div>
+      <label className="flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm font-black text-amber-800">
+        <input type="checkbox" name="generatePurchaseRequest" />
+        Generate purchase request when saving
+      </label>
+    </HousingForm>
+  );
+}
+
+function HousingForm({ title, type, saving, onSubmit, children }: { title: string; type: string; saving: boolean; onSubmit: (formData: FormData) => void; children: any }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    form.reset();
+  }
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <input type="hidden" name="type" value={type} />
+      <h3 className="text-xl font-black">{title}</h3>
+      <p className="mt-1 text-sm font-bold text-slate-500">Fields are flexible; fill what is available and the system completes IDs/status.</p>
+      <div className="mt-4 grid gap-3">
+        {children}
+        <button disabled={saving} className="h-11 rounded-lg bg-ink font-black text-white disabled:bg-slate-400">{saving ? "Saving..." : "Save"}</button>
+      </div>
+    </form>
+  );
+}
+
+function HousingPreviewModal({ type, record, history, canManage, onClose, onDelete }: { type: string; record: any; history: any[]; canManage: boolean; onClose: () => void; onDelete: () => void }) {
+  const attachments = attachmentList(record.photoUrls || record.attachmentUrls);
+  const images = attachments.filter(isImageUrl);
+  return (
+    <RequestModalShell title={`Housing ${type}: ${record.bookingNo || record.inspectionNo || record.code || record.tag || record.sku || record.name}`} onClose={onClose}>
+      <div className="grid gap-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          {Object.entries(record).filter(([key]) => !["property", "block", "room", "bed", "resident", "approvals", "beds"].includes(key)).slice(0, 18).map(([key, value]) => (
+            <PreviewField key={key} label={key.replace(/([A-Z])/g, " $1")} value={key.includes("At") || key.includes("check") || key === "dueAt" ? formatDateCell(value as string) : displayValue(value)} />
+          ))}
+        </div>
+        {record.room && <PreviewField label="Room" value={`${record.room.property?.name || ""} / ${record.room.block?.name || ""} / ${record.room.roomNumber || ""}`} />}
+        {images.length > 0 && (
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm font-black">Photo Evidence</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+              {images.map((url) => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt="Housing attachment" className="h-28 w-full rounded-lg object-cover" /></a>)}
+            </div>
+          </div>
+        )}
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <p className="text-sm font-black">History Tracking</p>
+          <div className="mt-3 grid gap-2">
+            {history.length ? history.map((item) => (
+              <div key={item.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+                <p className="font-black text-lagoon">{item.action}</p>
+                <p className="font-bold text-slate-600">{item.actor} / {formatDateCell(item.createdAt)}</p>
+                <p className="text-slate-600">{item.details}</p>
+              </div>
+            )) : <p className="rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-500">No history entries yet.</p>}
+          </div>
+        </div>
+        {canManage && <button type="button" onClick={onDelete} className="h-11 rounded-lg bg-coral font-black text-white">Delete {type}</button>}
+      </div>
+    </RequestModalShell>
+  );
+}
+
+function Reports() {
+  const [type, setType] = useState("assets");
+  const [rows, setRows] = useState<any[]>([]);
+  const [kpis, setKpis] = useState<Record<string, unknown> | null>(null);
+  const [responseGreaterThan, setResponseGreaterThan] = useState("");
+  const [resolutionGreaterThan, setResolutionGreaterThan] = useState("");
+  const [slaBreach, setSlaBreach] = useState("");
+  const [delayedOnly, setDelayedOnly] = useState(false);
+
+  async function preview(nextType = type) {
+    const response = await fetch(reportUrl(nextType, "preview"), { cache: "no-store" });
+    const result = await response.json();
+    setRows(result.rows ?? []);
+    setKpis(result.kpis ?? null);
+  }
+
+  useEffect(() => {
+    preview(type);
+  }, []);
+
+  const columns = rows[0] ? Object.keys(rows[0]).map((key) => [key, key] as [string, string]) : [];
+  const exportUrl = (format: string) => reportUrl(type, format);
+  function reportUrl(nextType: string, format: string) {
+    const params = new URLSearchParams({ type: nextType, format });
+    if (nextType === "work-orders") {
+      if (responseGreaterThan) params.set("responseGreaterThan", responseGreaterThan);
+      if (resolutionGreaterThan) params.set("resolutionGreaterThan", resolutionGreaterThan);
+      if (slaBreach) params.set("slaBreach", slaBreach);
+      if (delayedOnly) params.set("delayedOnly", "true");
+    }
+    return `/api/reports?${params.toString()}`;
+  }
+
+  return (
+    <section className="space-y-5">
+      <Panel title="Reports Preview & Download" icon={ClipboardCheck}>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={type}
+            onChange={(event) => {
+              setType(event.target.value);
+              preview(event.target.value);
+            }}
+            className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon"
+          >
+            <option value="assets">Assets</option>
+            <option value="work-orders">Work Orders</option>
+            <option value="requests">Service Requests</option>
+            <option value="inventory">Inventory</option>
+            <option value="ppm">PPM</option>
+            <option value="housing-dashboard">Housing Dashboard</option>
+            <option value="housing-rooms">Housing Rooms</option>
+            <option value="housing-bookings">Housing Bookings</option>
+            <option value="housing-inspections">Housing Inspections</option>
+            <option value="housing-assets">Housing Assets</option>
+            <option value="housing-inventory">Housing Inventory</option>
+            <option value="housing-approvals">Housing Approvals</option>
+            <option value="housing-notifications">Housing Notifications</option>
+            <option value="housing-notification-settings">Housing Notification Settings</option>
+            <option value="housing-history">Housing History</option>
+          </select>
+          <a className="rounded-lg bg-lagoon px-4 py-3 text-sm font-black text-white" href={exportUrl("csv")}>CSV</a>
+          <a className="rounded-lg bg-leaf px-4 py-3 text-sm font-black text-white" href={exportUrl("excel")}>Excel</a>
+          <a className="rounded-lg bg-coral px-4 py-3 text-sm font-black text-white" href={exportUrl("pdf")}>PDF</a>
+          <button onClick={() => preview(type)} className="rounded-lg bg-ink px-4 py-3 text-sm font-black text-white">Apply Filters</button>
+        </div>
+        {type === "work-orders" && (
+          <div className="mt-4 grid gap-3 rounded-lg bg-slate-50 p-3 md:grid-cols-4">
+            <input value={responseGreaterThan} onChange={(event) => setResponseGreaterThan(event.target.value)} placeholder="Response > mins" className="h-10 rounded-lg border border-slate-200 px-3 text-sm" />
+            <input value={resolutionGreaterThan} onChange={(event) => setResolutionGreaterThan(event.target.value)} placeholder="Resolution > mins" className="h-10 rounded-lg border border-slate-200 px-3 text-sm" />
+            <select value={slaBreach} onChange={(event) => setSlaBreach(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm">
+              <option value="">SLA all</option>
+              <option value="yes">SLA Breach</option>
+              <option value="no">No SLA Breach</option>
+            </select>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={delayedOnly} onChange={(event) => setDelayedOnly(event.target.checked)} /> Delayed only</label>
+          </div>
+        )}
+        {kpis && (
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            {Object.entries(kpis).map(([key, value]) => (
+              <div key={key} className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-black uppercase text-slate-500">{key.replaceAll("_", " ")}</p>
+                <p className="mt-1 text-lg font-black">{String(value ?? "-")}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-4">
+          <DataTable rows={rows} columns={columns} />
+        </div>
+      </Panel>
+    </section>
+  );
+}
+
+function AuditLogs({ logs }: { logs: any[] }) {
+  return (
+    <Panel title="Audit Logs" icon={Activity}>
+      <ReportButtons type="audit-logs" label="Audit report" />
+      <DataTable
+        rows={logs}
+        columns={[
+          ["createdAt", "Time"],
+          ["actorName", "User"],
+          ["role", "Role"],
+          ["action", "Action"],
+          ["entity", "Record Type"],
+          ["entityId", "Record ID"],
+          ["details", "Details"],
+        ]}
+      />
+    </Panel>
+  );
+}
+
+function Template({ type, title, value }: { type: string; title: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-black">{title}</p>
+        <a href={`/api/templates/${type}`} download={`${type}-template.csv`} className="rounded-lg bg-lagoon px-3 py-2 text-xs font-black text-white">Download CSV</a>
+      </div>
+      <code className="mt-2 block break-words text-xs text-slate-600">{value}</code>
+    </div>
+  );
+}
+
+function Panel({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
+  return (
+    <section className="min-w-0 overflow-hidden rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-lagoon/10 text-lagoon">
+          <Icon size={20} />
+        </div>
+        <h3 className="text-xl font-black">{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function DataTable({ rows, columns }: { rows: any[]; columns: [string, string][] }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleRows = rows.slice(startIndex, startIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rows.length]);
+
+  return (
+    <div className="grid gap-3">
+      <div className="max-w-full overflow-auto rounded-lg border border-slate-200 scrollbar-thin">
+        <table className="min-w-full border-collapse bg-white text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+            <tr>
+              <th className="whitespace-nowrap px-3 py-3 font-black">#</th>
+              {columns.map(([, label]) => (
+                <th key={label} className="whitespace-nowrap px-3 py-3 font-black">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, index) => (
+              <tr key={row.id ?? index} className="border-t border-slate-100">
+                <td className="whitespace-nowrap px-3 py-3 font-black text-slate-500">{startIndex + index + 1}</td>
+                {columns.map(([key]) => (
+                  <td key={key} className="max-w-[280px] whitespace-nowrap px-3 py-3">
+                    <CellValue value={row[key]} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <PaginationControls page={currentPage} totalPages={totalPages} onPageChange={setPage} totalItems={rows.length} />
+    </div>
+  );
+}
+
+function PaginationControls({ page, totalPages, totalItems, onPageChange }: { page: number; totalPages: number; totalItems: number; onPageChange: (page: number) => void }) {
+  if (totalItems === 0) return <p className="text-sm font-bold text-slate-500">No entries found.</p>;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 p-3">
+      <p className="text-sm font-bold text-slate-600">
+        Page {page} of {totalPages} / {totalItems} entries / {PAGE_SIZE} per page
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={page === 1}
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Previous
+        </button>
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map((item) => (
+          <button
+            type="button"
+            key={item}
+            onClick={() => onPageChange(item)}
+            className={`h-9 min-w-9 rounded-lg px-3 text-sm font-black ${item === page ? "bg-lagoon text-white" : "border border-slate-200 bg-white text-slate-700"}`}
+          >
+            {item}
+          </button>
+        ))}
+        <button
+          type="button"
+          disabled={page === totalPages}
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CellValue({ value }: { value: any }) {
+  if (value === null || value === undefined) return <span className="text-slate-400">-</span>;
+  if (typeof value === "string" && ["CRITICAL", "HIGH", "EXTREME"].includes(value)) return <span className="rounded-lg bg-coral/10 px-2 py-1 font-black text-coral">{value}</span>;
+  if (typeof value === "string" && ["COMPLETED", "CLOSED", "ACTIVE"].includes(value)) return <span className="rounded-lg bg-leaf/10 px-2 py-1 font-black text-leaf">{value}</span>;
+  if (typeof value === "string" && value.includes("T")) return new Date(value).toLocaleDateString();
+  if (typeof value === "object") return value.name ?? value.tag ?? JSON.stringify(value);
+  return String(value);
+}
+
+function ActionForm({ title, fields, onSubmit, saving }: { title: string; fields: string[]; onSubmit: (formData: FormData) => void; saving: boolean }) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await onSubmit(new FormData(form));
+    form.reset();
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-lg border border-white/80 bg-white p-5 shadow-lift"
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-sun/50 text-amber-700">
+          <PackagePlus size={20} />
+        </div>
+        <h3 className="text-xl font-black">{title}</h3>
+      </div>
+      <div className="grid gap-3">
+        {fields.map((field) => (
+          <label key={field} className="grid gap-1 text-sm font-bold capitalize text-slate-600">
+            {field.replace(/([A-Z])/g, " $1")}
+            {field === "description" || field === "jobPlan" ? (
+              <textarea name={field} className="min-h-24 rounded-lg border border-slate-200 p-3 outline-none focus:border-lagoon" />
+            ) : field === "warrantyExpiry" ? (
+              <input name={field} type="date" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+            ) : field === "statutory" ? (
+              <select name={field} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+                <option value="false">false</option>
+                <option value="true">true</option>
+              </select>
+            ) : field === "priority" || field === "criticality" ? (
+              <select name={field} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+                <option>LOW</option>
+                <option>MEDIUM</option>
+                <option>HIGH</option>
+                <option>CRITICAL</option>
+              </select>
+            ) : field === "risk" ? (
+              <select name={field} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon">
+                <option>LOW</option>
+                <option>MODERATE</option>
+                <option>HIGH</option>
+                <option>EXTREME</option>
+              </select>
+            ) : (
+              <input name={field} className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
+            )}
+          </label>
+        ))}
+        <button disabled={saving} className="mt-2 flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-4 font-black text-white disabled:cursor-not-allowed disabled:bg-slate-400">
+          <Plus size={18} />
+          {saving ? "Saving..." : "Submit"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
