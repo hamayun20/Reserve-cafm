@@ -15,13 +15,13 @@ A deployable Computer Aided Facility Management application for enterprise facil
 
 ## Local setup
 
-`ash
+```bash
 npm install
 copy .env.example .env
 npm run db:push
 npm run db:seed
 npm run dev
-`
+```
 
 ## Dokploy
 
@@ -30,8 +30,8 @@ This project is ready for Dokploy as an independent app.
 Recommended Dokploy setup:
 
 - Build type: Dockerfile, or Docker Compose if you want the bundled PostgreSQL service.
-- Dockerfile port: $(System.Collections.Hashtable.Port).
+- Dockerfile port: 3003.
 - Required persistent database variable when using external PostgreSQL: DATABASE_URL.
 - App name variable: NEXT_PUBLIC_APP_NAME=Reserve CAFM.
 
-The included docker-compose.yml runs the app and a dedicated PostgreSQL database using the $(System.Collections.Hashtable.Volume) Docker volume. If DATABASE_URL is not set, the container still starts in demo mode with fallback data.
+The included docker-compose.yml runs the app and a dedicated PostgreSQL database using the reserve_cafm_postgres Docker volume. If DATABASE_URL is not set, the container still starts in demo mode with fallback data.
