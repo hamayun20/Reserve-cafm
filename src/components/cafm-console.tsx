@@ -211,7 +211,7 @@ const moduleGroups = [
   },
 ];
 
-const healthColors = ["#35a852", "#0f8b8d", "#ffd166", "#f45d48"];
+const healthColors = ["#12a66a", "#00a884", "#f7b955", "#ef476f"];
 const PAGE_SIZE = 100;
 const HOUSING_FIELD_CLASS = "h-11 rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-lagoon";
 const modulePermissions: Record<string, string> = {
@@ -239,6 +239,12 @@ const statToneClasses: Record<string, string> = {
   leaf: "text-leaf",
   lagoon: "text-lagoon",
   sun: "text-amber-600",
+};
+const statToneStyles: Record<string, { iconBg: string; iconText: string; Icon: any }> = {
+  coral: { iconBg: "bg-rose-50", iconText: "text-coral", Icon: Wrench },
+  leaf: { iconBg: "bg-emerald-50", iconText: "text-leaf", Icon: ShieldCheck },
+  lagoon: { iconBg: "bg-cyan-50", iconText: "text-lagoon", Icon: Activity },
+  sun: { iconBg: "bg-amber-50", iconText: "text-amber-600", Icon: Boxes },
 };
 
 function cleanMessage(message: string) {
@@ -512,19 +518,19 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
   }
 
   return (
-    <main className="h-screen overflow-hidden text-ink">
-      <section className="grid h-screen min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)] lg:grid-rows-1">
-        <aside className="max-h-[38vh] shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4 scrollbar-thin lg:h-screen lg:max-h-none">
+    <main className="h-screen overflow-hidden bg-[#f7fafc] text-ink">
+      <section className="grid h-screen min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)] lg:grid-rows-1">
+        <aside className="max-h-[38vh] shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-5 scrollbar-thin lg:h-screen lg:max-h-none">
           <div className="grid gap-2 px-1">
-            <div className="grid h-16 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-              <Image src="/cafm-pro.png" alt="CAFM PRO logo" width={260} height={90} className="h-full w-full object-contain" priority />
+            <div className="grid h-20 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+              <Image src="/cafm-pro.png" alt="CAFM PRO logo" width={300} height={104} className="h-full w-full object-contain" priority />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500">Enterprise facility command</p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm">
+          <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50/80 p-3 text-sm">
             <div className="flex items-center gap-2 font-bold text-emerald-700">
               <Activity size={16} />
               {health?.database === "connected" || records.live ? "Database online" : "Database issue"}
@@ -533,7 +539,7 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
               {health ? `Status: ${health.database}` : "Checking database..."}
             </p>
             {health?.message && <p className="mt-1 break-words text-xs text-coral">{health.message}</p>}
-            <button onClick={checkHealth} className="mt-3 h-9 rounded-lg bg-white px-3 text-xs font-black text-lagoon shadow-sm">
+            <button onClick={checkHealth} className="mt-3 h-9 rounded-lg border border-emerald-100 bg-white px-3 text-xs font-black text-lagoon shadow-sm">
               Check DB
             </button>
           </div>
@@ -561,7 +567,7 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
                           key={menuKey}
                           onClick={() => navigate(item.id, menuKey, String("view" in item ? item.view : item.id))}
                           className={`flex h-9 items-center gap-2 rounded-lg px-2 text-left text-sm transition ${
-                            activeMenuKey === menuKey ? "bg-indigo-50 font-black text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-ink"
+                            activeMenuKey === menuKey ? "bg-emerald-50 font-black text-lagoon" : "text-slate-600 hover:bg-slate-50 hover:text-ink"
                           }`}
                         >
                           <Icon size={13} />
@@ -575,10 +581,10 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
             })}
           </nav>
 
-          <div className="mt-5 rounded-lg bg-slate-50 p-3">
+          <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-sm font-black">{user.name}</p>
             <p className="mt-1 text-xs text-slate-700">{user.role} / {user.department || "All departments"} / {user.email}</p>
-            <button onClick={logout} className="mt-3 flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-xs font-black text-coral shadow-sm">
+            <button onClick={logout} className="mt-3 flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-coral shadow-sm">
               <LogOut size={14} />
               Logout
             </button>
@@ -586,21 +592,21 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
         </aside>
 
         <section className="min-h-0 min-w-0 space-y-5 overflow-auto p-3 scrollbar-thin sm:p-5 lg:h-screen lg:p-6">
-          <header className="min-w-0 rounded-lg bg-gradient-to-r from-fuchsia-600 to-indigo-600 p-4 text-white shadow-lift sm:p-5">
+          <header className="min-w-0 rounded-lg border border-slate-200 bg-white p-5 shadow-lift">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
-                <p className="text-sm font-black uppercase tracking-wider text-white/80">International level CAFM suite</p>
-                <h2 className="mt-1 text-2xl font-black sm:text-3xl xl:text-4xl">One-stop facility operations system</h2>
-                <p className="mt-2 max-w-3xl text-white/80">
+                <p className="text-sm font-black uppercase text-lagoon">International level CAFM suite</p>
+                <h2 className="mt-1 text-2xl font-black text-ink sm:text-3xl xl:text-4xl">One-stop facility operations system</h2>
+                <p className="mt-2 max-w-3xl text-slate-500">
                   {dashboardSubtitle(user.role, user.department)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => navigate("work", "Tickets-Work Orders")} className="flex h-11 items-center gap-2 rounded-lg bg-coral px-4 font-black text-white shadow-lg">
+                <button onClick={() => navigate("work", "Tickets-Work Orders")} className="flex h-11 items-center gap-2 rounded-lg bg-lagoon px-4 font-black text-white shadow-sm transition hover:bg-lagoon/90">
                   <Plus size={18} />
                   New Work
                 </button>
-                <button onClick={() => navigate("helpdesk", "Tickets-Service Requests")} className="flex h-11 items-center gap-2 rounded-lg bg-lagoon px-4 font-black text-white shadow-lg">
+                <button onClick={() => navigate("helpdesk", "Tickets-Service Requests")} className="flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 font-black text-ink shadow-sm transition hover:border-lagoon hover:text-lagoon">
                   <Smartphone size={18} />
                   Dispatch
                 </button>
@@ -611,13 +617,21 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
           {toast && <div className="rounded-lg border border-lagoon/20 bg-white p-3 font-bold text-lagoon shadow-lift">{toast}</div>}
 
           <section className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {moduleStats.map((stat) => (
-              <div key={stat.label} className="min-w-0 rounded-lg border border-white/80 bg-white p-4 shadow-lift">
-                <p className="text-sm font-bold text-slate-500">{stat.label}</p>
-                <p className="mt-2 text-3xl font-black">{stat.value}</p>
-                <p className={`mt-1 text-sm font-bold ${statToneClasses[stat.tone]}`}>{stat.delta}</p>
+            {moduleStats.map((stat) => {
+              const tone = statToneStyles[stat.tone];
+              const Icon = tone.Icon;
+              return (
+              <div key={stat.label} className="min-w-0 rounded-lg border border-slate-200 bg-white p-5 shadow-lift">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="max-w-[12rem] text-sm font-black text-slate-500">{stat.label}</p>
+                  <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-lg ${tone.iconBg} ${tone.iconText}`}>
+                    <Icon size={22} />
+                  </div>
+                </div>
+                <p className="mt-4 text-3xl font-black text-ink">{stat.value}</p>
+                <p className={`mt-2 text-sm font-bold ${statToneClasses[stat.tone]}`}>{stat.delta}</p>
               </div>
-            ))}
+            )})}
           </section>
 
           {!canViewActive && <AccessDenied moduleId={active} />}
@@ -760,16 +774,16 @@ function CommandCenter({ data }: { data: ConsoleData }) {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="ppm" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#0f8b8d" stopOpacity={0.45} />
-                  <stop offset="100%" stopColor="#0f8b8d" stopOpacity={0.04} />
+                  <stop offset="0%" stopColor="#00a884" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#00a884" stopOpacity={0.04} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#d9e6ee" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5edf4" />
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Area type="monotone" dataKey="ppm" stroke="#0f8b8d" fill="url(#ppm)" strokeWidth={3} />
-              <Area type="monotone" dataKey="reactive" stroke="#f45d48" fill="#f45d4822" strokeWidth={3} />
+              <Area type="monotone" dataKey="ppm" stroke="#00a884" fill="url(#ppm)" strokeWidth={3} />
+              <Area type="monotone" dataKey="reactive" stroke="#ef476f" fill="#ef476f18" strokeWidth={3} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -5629,12 +5643,12 @@ function Template({ type, title, value }: { type: string; title: string; value: 
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-white/80 bg-white p-5 shadow-lift">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-lift">
       <div className="mb-4 flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-lg bg-lagoon/10 text-lagoon">
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-lagoon">
           <Icon size={20} />
         </div>
-        <h3 className="text-xl font-black">{title}</h3>
+        <h3 className="text-xl font-black text-ink">{title}</h3>
       </div>
       {children}
     </section>
@@ -5656,7 +5670,7 @@ function DataTable({ rows, columns }: { rows: any[]; columns: [string, string][]
     <div className="grid gap-3">
       <div className="max-w-full overflow-auto rounded-lg border border-slate-200 scrollbar-thin">
         <table className="min-w-full border-collapse bg-white text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+          <thead className="bg-[#f8fafc] text-left text-xs uppercase text-slate-500">
             <tr>
               <th className="whitespace-nowrap px-3 py-3 font-black">#</th>
               {columns.map(([, label]) => (
@@ -5668,7 +5682,7 @@ function DataTable({ rows, columns }: { rows: any[]; columns: [string, string][]
           </thead>
           <tbody>
             {visibleRows.map((row, index) => (
-              <tr key={row.id ?? index} className="border-t border-slate-100">
+              <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="whitespace-nowrap px-3 py-3 font-black text-slate-500">{startIndex + index + 1}</td>
                 {columns.map(([key]) => (
                   <td key={key} className="max-w-[280px] whitespace-nowrap px-3 py-3">

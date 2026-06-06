@@ -5,14 +5,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#172033",
-        lagoon: "#0f8b8d",
-        sun: "#ffd166",
-        coral: "#f45d48",
-        leaf: "#35a852",
+        ink: "#001b3d",
+        lagoon: "#00a884",
+        sun: "#f7b955",
+        coral: "#ef476f",
+        leaf: "#12a66a",
       },
       boxShadow: {
-        lift: "0 18px 45px rgba(23, 32, 51, 0.14)",
+        lift: "0 10px 26px rgba(15, 23, 42, 0.07)",
       },
     },
   },

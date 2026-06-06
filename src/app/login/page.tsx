@@ -24,10 +24,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 p-6 text-ink">
-      <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-white bg-white p-6 shadow-lift">
+    <main className="grid min-h-screen place-items-center bg-[#f7fafc] p-6 text-ink">
+      <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lift">
         <div className="grid gap-4">
-          <div className="grid h-24 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="grid h-28 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
             <Image src="/cafm-pro.png" alt="CAFM PRO logo" width={1100} height={380} className="h-full w-full object-contain" priority />
           </div>
           <div>
@@ -36,9 +36,9 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="mt-6 grid gap-3">
-          <input name="email" type="email" defaultValue="admin@cafm.local" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
-          <input name="password" type="password" defaultValue="Admin@12345" className="h-11 rounded-lg border border-slate-200 px-3 outline-none focus:border-lagoon" />
-          <button className="h-11 rounded-lg bg-ink font-black text-white">Login</button>
+          <input name="email" type="email" defaultValue="admin@cafm.local" className="h-11 rounded-lg border border-slate-200 bg-white px-3 outline-none transition focus:border-lagoon focus:ring-4 focus:ring-lagoon/10" />
+          <input name="password" type="password" defaultValue="Admin@12345" className="h-11 rounded-lg border border-slate-200 bg-white px-3 outline-none transition focus:border-lagoon focus:ring-4 focus:ring-lagoon/10" />
+          <button className="h-11 rounded-lg bg-lagoon font-black text-white shadow-sm transition hover:bg-lagoon/90">Login</button>
           {message && <p className="text-sm font-bold text-coral">{message}</p>}
         </div>
       </form>
