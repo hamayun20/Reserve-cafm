@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <title>CAFM PRO Mobile</title>
+    <style>
+      :root {
+        --ink: #07172f;
+        --muted: #5f708a;
+        --line: #dce8ef;
+        --soft: #f4faf9;
+        --brand: #006fba;
+        --accent: #0bb7ad;
+        --danger: #c92845;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        background: linear-gradient(180deg, #ffffff 0%, #eef8f7 100%);
+        color: var(--ink);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      main {
+        display: grid;
+        min-height: 100vh;
+        min-height: 100dvh;
+        place-items: center;
+        padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+      }
+
+      .panel {
+        width: min(100%, 440px);
+        border: 1px solid rgba(0, 111, 186, 0.12);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 22px 55px rgba(7, 23, 47, 0.12);
+        padding: 24px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .mark {
+        display: grid;
+        width: 62px;
+        height: 62px;
+        place-items: center;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--brand), var(--accent));
+        color: #fff;
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      form {
+        display: grid;
+        gap: 14px;
+        margin-top: 28px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--muted);
+      }
+
+      input {
+        width: 100%;
+        height: 52px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 16px;
+        outline: none;
+        padding: 0 14px;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(11, 183, 173, 0.12);
+      }
+
+      button {
+        height: 52px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--ink);
+        color: #fff;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .secondary {
+        background: #fff;
+        color: var(--brand);
+        border: 1px solid var(--line);
+      }
+
+      .hint {
+        margin-top: 16px;
+        border-radius: 12px;
+        background: var(--soft);
+        padding: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .error {
+        display: none;
+        margin-top: 12px;
+        color: var(--danger);
+        font-size: 13px;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <div class="brand">
+          <div class="mark">CP</div>
+          <div>
+            <h1>CAFM PRO</h1>
+            <p>Mobile tester</p>
+          </div>
+        </div>
+
+        <form id="launch-form">
+          <label>
+            CAFM web app URL
+            <input id="app-url" name="appUrl" type="url" placeholder="https://your-cafm-domain.com" autocomplete="url" required />
+          </label>
+          <button type="submit">Open CAFM PRO</button>
+          <button class="secondary" type="button" id="clear-url">Clear saved URL</button>
+        </form>
+
+        <div class="hint">
+          Use your deployed HTTPS URL for real device testing. Android emulator can use http://10.0.2.2:3003 when your local dev server is running.
+        </div>
+        <div class="error" id="error">Enter a valid http:// or https:// URL.</div>
+      </section>
+    </main>
+
+    <script>
+      const key = "cafmProMobileUrl";
+      const input = document.querySelector("#app-url");
+      const form = document.querySelector("#launch-form");
+      const clear = document.querySelector("#clear-url");
+      const error = document.querySelector("#error");
+
+      input.value = localStorage.getItem(key) || "";
+
+      function validUrl(value) {
+        try {
+          const parsed = new URL(value);
+          return ["http:", "https:"].includes(parsed.protocol);
+        } catch {
+          return false;
+        }
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const value = input.value.trim().replace(/\/+$/, "");
+        if (!validUrl(value)) {
+          error.style.display = "block";
+          return;
+        }
+        localStorage.setItem(key, value);
+        window.location.href = value;
+      });
+
+      clear.addEventListener("click", () => {
+        localStorage.removeItem(key);
+        input.value = "";
+        error.style.display = "none";
+      });
+    </script>
+  </body>
+</html>
