@@ -772,7 +772,7 @@ async function handleAssetOutputs(asset: any, input: z.infer<typeof housingSchem
 async function firstProperty(propertyId?: string) {
   const property = propertyId ? await prisma.housingProperty.findUnique({ where: { id: propertyId } }) : await prisma.housingProperty.findFirst();
   if (property) return property;
-  return prisma.housingProperty.create({ data: { code: "HSP-001", name: "Tamimi Housing Village", site: "Jazan", city: "Jazan", manager: "Housing Supervisor" } });
+  return prisma.housingProperty.create({ data: { code: "HSP-001", name: "Reserve Housing Village", site: "Jazan", city: "Jazan", manager: "Housing Supervisor" } });
 }
 
 async function firstRoom(roomId?: string) {

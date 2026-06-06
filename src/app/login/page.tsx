@@ -26,12 +26,12 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-50 p-6 text-ink">
       <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-white bg-white p-6 shadow-lift">
-        <div className="flex items-center gap-3">
-          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-lg border border-amber-200 bg-white p-1 shadow-sm">
-            <Image src="/tafga.png" alt="Tamimi Global CAFM logo" width={56} height={56} className="h-full w-full object-contain" priority />
+        <div className="grid gap-4">
+          <div className="grid h-24 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <Image src="/cafm-pro.png" alt="CAFM PRO logo" width={1100} height={380} className="h-full w-full object-contain" priority />
           </div>
           <div>
-            <h1 className="text-2xl font-black leading-tight">Tamimi Global CAFM</h1>
+            <h1 className="text-2xl font-black leading-tight">Reserve CAFM</h1>
             <p className="text-sm text-slate-500">Enterprise facility command</p>
             <p className="mt-1 text-xs font-bold text-slate-400">Sign in to continue</p>
           </div>

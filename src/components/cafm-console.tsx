@@ -515,12 +515,12 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
     <main className="h-screen overflow-hidden text-ink">
       <section className="grid h-screen min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)] lg:grid-rows-1">
         <aside className="max-h-[38vh] shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4 scrollbar-thin lg:h-screen lg:max-h-none">
-          <div className="flex items-center gap-3 px-1">
-            <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-lg border border-amber-200 bg-white p-1 shadow-sm">
-              <Image src="/tafga.png" alt="Tamimi Global CAFM logo" width={52} height={52} className="h-full w-full object-contain" priority />
+          <div className="grid gap-2 px-1">
+            <div className="grid h-16 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+              <Image src="/cafm-pro.png" alt="CAFM PRO logo" width={260} height={90} className="h-full w-full object-contain" priority />
             </div>
             <div>
-              <h1 className="text-lg font-black leading-tight">Tamimi Global CAFM</h1>
+              <h1 className="text-lg font-black leading-tight">Reserve CAFM</h1>
               <p className="text-xs text-slate-500">Enterprise facility command</p>
             </div>
           </div>

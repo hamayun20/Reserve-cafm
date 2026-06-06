@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tamimi Global CAFM",
-  description: "Tamimi Global CAFM enterprise facility command platform",
+  title: "Reserve CAFM",
+  description: "Reserve CAFM enterprise facility command platform",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

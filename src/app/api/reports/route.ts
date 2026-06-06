@@ -623,7 +623,7 @@ function htmlPreview(rows: ReportRow[], title: string, kpis: Record<string, unkn
 function pdf(rows: ReportRow[], title: string, kpis: Record<string, unknown> | null, filters: ReturnType<typeof reportFilters>) {
   const kpiLines = kpis ? Object.entries(kpis).map(([key, value]) => `${key}: ${value ?? "-"}`) : [];
   const filterLines = [`Filters: date=${filters.dateFrom || "-"} to ${filters.dateTo || "-"}, company=${filters.company || "all"}, building=${filters.building || "all"}, floor=${filters.floor || "all"}, room=${filters.room || "all"}, status=${filters.status || "all"}, response>${filters.responseGreaterThan ?? "-"} mins, resolution>${filters.resolutionGreaterThan ?? "-"} mins, sla=${filters.slaBreach ?? "all"}, delayed=${filters.delayedOnly ? "yes" : "no"}`];
-  const lines = [`Tamimi Global CAFM Report: ${title}`, `Generated: ${new Date().toISOString()}`, ...filterLines, ...kpiLines, "", ...rows.slice(0, 35).map((row) => Object.values(row).join(" | "))];
+  const lines = [`Reserve CAFM Report: ${title}`, `Generated: ${new Date().toISOString()}`, ...filterLines, ...kpiLines, "", ...rows.slice(0, 35).map((row) => Object.values(row).join(" | "))];
   const text = lines.join("\\n").replace(/[()\\]/g, "");
   return `%PDF-1.4
 1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj

@@ -176,42 +176,42 @@ async function main() {
   });
   const electricalTeam = await prisma.team.upsert({
     where: { code: "ELEC" },
-    update: {},
+    update: { email: "electrical@reserve.local" },
     create: {
       code: "ELEC",
       name: "Electrical Response Team",
       type: "Hard Services",
       supervisor: "Mariam Al-Fahad",
       phone: "+966 500000002",
-      email: "electrical@tamimiglobal.local",
+      email: "electrical@reserve.local",
       shift: "Day + On-call",
       coverage: "Electrical rooms, DBs, generators and UPS",
     },
   });
   const civilTeam = await prisma.team.upsert({
     where: { code: "CIVIL" },
-    update: {},
+    update: { email: "civil@reserve.local" },
     create: {
       code: "CIVIL",
       name: "Civil & Fitout Team",
       type: "Soft / Civil Services",
       supervisor: "Omar Siddiqui",
       phone: "+966 500000003",
-      email: "civil@tamimiglobal.local",
+      email: "civil@reserve.local",
       shift: "Day shift",
       coverage: "Finishes, doors, ceilings, rooms and occupancy support",
     },
   });
   const housekeepingTeam = await prisma.team.upsert({
     where: { code: "HK" },
-    update: {},
+    update: { email: "housekeeping@reserve.local" },
     create: {
       code: "HK",
       name: "Housekeeping Team",
       type: "Soft Services",
       supervisor: "Omar Siddiqui",
       phone: "+966 500000004",
-      email: "housekeeping@tamimiglobal.local",
+      email: "housekeeping@reserve.local",
       shift: "Two shifts",
       coverage: "Public areas, offices, washrooms and pantry spaces",
     },
@@ -704,10 +704,16 @@ async function main() {
 
   const housingProperty = await prisma.housingProperty.upsert({
     where: { code: "HSP-001" },
-    update: {},
+    update: {
+      name: "Reserve Housing Village",
+      site: "Jazan Operations Camp",
+      city: "Jazan",
+      manager: "Housing Supervisor",
+      totalRooms: 6,
+    },
     create: {
       code: "HSP-001",
-      name: "Tamimi Global Housing Village",
+      name: "Reserve Housing Village",
       site: "Jazan Operations Camp",
       city: "Jazan",
       manager: "Housing Supervisor",
@@ -762,13 +768,16 @@ async function main() {
 
   const resident = await prisma.housingResident.upsert({
     where: { residentNo: "RES-00001" },
-    update: {},
+    update: {
+      email: "hamayun.resident@reserve.local",
+      companyId: "RES-EMP-001",
+    },
     create: {
       residentNo: "RES-00001",
       name: "Hamayun Ali",
-      email: "hamayun.resident@tamimiglobal.local",
+      email: "hamayun.resident@reserve.local",
       phone: "+966 500000101",
-      companyId: "TG-EMP-001",
+      companyId: "RES-EMP-001",
       nationality: "Pakistan",
       departmentCode: "MEP",
     },
@@ -829,7 +838,11 @@ async function main() {
   });
   await prisma.housingInventory.upsert({
     where: { sku: "HSI-LINEN-SET" },
-    update: {},
+    update: {
+      supplierName: "Reserve Housekeeping Supplies",
+      supplierContact: "housing.supplies@reserve.local",
+      preferredSupplier: "Reserve Housekeeping Supplies",
+    },
     create: {
       sku: "HSI-LINEN-SET",
       name: "Linen Set",
@@ -842,9 +855,9 @@ async function main() {
       reorderPoint: 20,
       unit: "Set",
       unitCost: 42,
-      supplierName: "Tamimi Housekeeping Supplies",
-      supplierContact: "housing.supplies@tamimi.local",
-      preferredSupplier: "Tamimi Housekeeping Supplies",
+      supplierName: "Reserve Housekeeping Supplies",
+      supplierContact: "housing.supplies@reserve.local",
+      preferredSupplier: "Reserve Housekeeping Supplies",
       expiryDate: addDays(new Date(), 365),
       lastMovementType: "RECEIPT",
       lastMovementQty: 48,
