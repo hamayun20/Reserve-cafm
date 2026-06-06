@@ -30,6 +30,7 @@ This project is ready for Dokploy as an independent app.
 Recommended Dokploy setup:
 
 - Build type: Dockerfile, or Docker Compose if you want the bundled PostgreSQL service.
+- Dockerfile path: `dockerfile` (lowercase, matching the Dokploy build setting).
 - Dockerfile port: 3003.
 - Required persistent database variable when using external PostgreSQL: DATABASE_URL.
 - App name variable: NEXT_PUBLIC_APP_NAME=Reserve CAFM.
