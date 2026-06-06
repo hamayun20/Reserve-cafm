@@ -12,6 +12,8 @@
                     "db:migrate":  "prisma migrate deploy",
                     "db:seed":  "tsx prisma/seed.ts",
                     "test:housing":  "tsx scripts/housing-rules.test.ts",
+                    "test:system":  "tsx scripts/system-smoke.test.ts",
+                    "test:all":  "npm run test:housing && npm run test:system",
                     "dokploy:release":  "prisma db push && prisma db seed && node scripts/start-local.mjs"
                 },
     "dependencies":  {
