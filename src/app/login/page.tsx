@@ -31,8 +31,7 @@ export default function LoginPage() {
             <Image src="/cafm-pro.png" alt="CAFM PRO logo" width={1100} height={380} className="h-full w-full object-contain" priority />
           </div>
           <div>
-            <h1 className="text-2xl font-black leading-tight">Reserve CAFM</h1>
-            <p className="text-sm text-slate-500">Enterprise facility command</p>
+            <p className="text-sm font-bold text-slate-500">Enterprise facility command</p>
             <p className="mt-1 text-xs font-bold text-slate-400">Sign in to continue</p>
           </div>
         </div>

@@ -520,8 +520,7 @@ export function CafmConsole({ data, user }: { data: ConsoleData; user: { id?: st
               <Image src="/cafm-pro.png" alt="CAFM PRO logo" width={260} height={90} className="h-full w-full object-contain" priority />
             </div>
             <div>
-              <h1 className="text-lg font-black leading-tight">Reserve CAFM</h1>
-              <p className="text-xs text-slate-500">Enterprise facility command</p>
+              <p className="text-xs font-bold text-slate-500">Enterprise facility command</p>
             </div>
           </div>
 
