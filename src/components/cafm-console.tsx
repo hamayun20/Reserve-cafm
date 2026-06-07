@@ -90,6 +90,14 @@ type ActionPermissions = {
   verifyWork: boolean;
 };
 
+type PermissionRecord = {
+  id?: string;
+  code: string;
+  name: string;
+  module?: string;
+  description?: string;
+};
+
 const moduleGroups = [
   {
     label: "Dashboard",
@@ -233,6 +241,56 @@ const modulePermissions: Record<string, string> = {
   audit: "reports.view",
   housing: "housing.view",
   compliance: "compliance.view",
+};
+const permissionCategoryOrder = moduleGroups.map((group) => group.label);
+const permissionCategoryAliases: Record<string, string> = {
+  Administration: "Users Management",
+  Assets: "Assets Management",
+  Compliance: "Compliance & Certification",
+  Helpdesk: "Tickets",
+  Housing: "Housing Operations",
+  Maintenance: "Tickets",
+  Reception: "Facility Bookings",
+  Reports: "Activity Logs",
+  Resident: "Housing Operations",
+  Work: "Tickets",
+};
+const permissionCategoryDescriptions: Record<string, string> = {
+  "Activity Logs": "Audit logs, reporting previews and export visibility.",
+  "Assets Management": "Asset register, bulk asset upload and allocation access.",
+  "Compliance & Certification": "Certificates, audits, expiry alerts and compliance reporting.",
+  Dashboard: "Main command center and operational dashboard access.",
+  "Facility Bookings": "Locations, booking reports and front-desk intake access.",
+  "Housing Operations": "Accommodation, room readiness, approvals, residents and housing reports.",
+  "Inventory Management": "Inventory register, stock uploads and inventory report access.",
+  Safety: "HSE, IoT and BMS visibility controls.",
+  Services: "Department codes, service teams and service catalog controls.",
+  Tickets: "Service requests, work orders, job plans and PPM workflow access.",
+  "Users Management": "User accounts, roles and permission administration.",
+  Utilities: "Bulk upload center, templates and report download utilities.",
+};
+const permissionCodeCategories: Record<string, string> = {
+  "assets.manage": "Assets Management",
+  "assets.view": "Assets Management",
+  "compliance.manage": "Compliance & Certification",
+  "compliance.view": "Compliance & Certification",
+  "housing.approve": "Housing Operations",
+  "housing.manage": "Housing Operations",
+  "housing.view": "Housing Operations",
+  "ppm.manage": "Tickets",
+  "reception.manage": "Facility Bookings",
+  "reports.view": "Activity Logs",
+  "requests.approve": "Tickets",
+  "requests.manage": "Tickets",
+  "requests.view": "Tickets",
+  "resident.portal": "Housing Operations",
+  "roles.manage": "Users Management",
+  "users.manage": "Users Management",
+  "work.assign": "Tickets",
+  "work.execute": "Tickets",
+  "work.manage": "Tickets",
+  "work.verify": "Tickets",
+  "work.view": "Tickets",
 };
 const statToneClasses: Record<string, string> = {
   coral: "text-coral",
@@ -4163,6 +4221,53 @@ function Templates() {
   );
 }
 
+function permissionCategory(permission: PermissionRecord) {
+  const explicitCategory = permissionCodeCategories[permission.code];
+  if (explicitCategory) return explicitCategory;
+
+  const moduleName = permission.module?.trim() || "Utilities";
+  return permissionCategoryAliases[moduleName] ?? moduleName;
+}
+
+function sentence(value: string) {
+  const clean = value.trim();
+  if (!clean) return clean;
+  return /[.!?]$/.test(clean) ? clean : `${clean}.`;
+}
+
+function permissionDescription(permission: PermissionRecord, category: string) {
+  return sentence(permission.description || `Access ${permission.name} under ${category}`);
+}
+
+function permissionModuleLabel(permission: PermissionRecord, category: string) {
+  if (!permission.module || permission.module === category) return `${category} menu`;
+  return `${category} / ${permission.module}`;
+}
+
+function groupedPermissions(permissions: PermissionRecord[]) {
+  const buckets = new Map<string, PermissionRecord[]>();
+
+  for (const permission of permissions) {
+    const category = permissionCategory(permission);
+    buckets.set(category, [...(buckets.get(category) ?? []), permission]);
+  }
+
+  return Array.from(buckets.entries())
+    .map(([category, items]) => ({
+      category,
+      description: permissionCategoryDescriptions[category] ?? `Permissions for ${category}.`,
+      items: [...items].sort((left, right) => left.name.localeCompare(right.name)),
+    }))
+    .sort((left, right) => {
+      const leftIndex = permissionCategoryOrder.indexOf(left.category);
+      const rightIndex = permissionCategoryOrder.indexOf(right.category);
+      if (leftIndex === -1 && rightIndex === -1) return left.category.localeCompare(right.category);
+      if (leftIndex === -1) return 1;
+      if (rightIndex === -1) return -1;
+      return leftIndex - rightIndex;
+    });
+}
+
 function UsersRoles({
   users,
   teams,
@@ -4198,10 +4303,14 @@ function UsersRoles({
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(
     rolePermissions.filter((item) => item.role === "Admin").map((item) => item.permission.code),
   );
+  const permissionGroups = useMemo(() => groupedPermissions(permissions), [permissions]);
+
+  useEffect(() => {
+    setSelectedPermissions(rolePermissions.filter((item) => item.role === role).map((item) => item.permission.code));
+  }, [role, rolePermissions]);
 
   function changeRole(nextRole: string) {
     setRole(nextRole);
-    setSelectedPermissions(rolePermissions.filter((item) => item.role === nextRole).map((item) => item.permission.code));
   }
 
   function togglePermission(code: string) {
@@ -4235,21 +4344,39 @@ function UsersRoles({
         </Panel>
         <Panel title="Permissions Matrix" icon={ShieldCheck}>
           <ReportButtons type="permissions" label="Permissions report" />
-          <div className="mb-4 flex flex-wrap gap-3">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
             <select value={role} onChange={(event) => changeRole(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3">
               {roleOptions(roles).map((item) => <option key={item}>{item}</option>)}
             </select>
             <button onClick={() => saveRolePermissions(role, selectedPermissions)} className="rounded-lg bg-ink px-4 py-2 text-sm font-black text-white">Save Permissions</button>
+            <span className="rounded-lg bg-lagoon/10 px-3 py-2 text-xs font-black text-lagoon">{selectedPermissions.length} selected</span>
           </div>
-          <div className="grid gap-2 md:grid-cols-2">
-            {permissions.map((permission) => (
-              <label key={permission.id} className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-sm">
-                <input type="checkbox" checked={selectedPermissions.includes(permission.code)} onChange={() => togglePermission(permission.code)} className="mt-1" />
-                <span>
-                  <span className="block font-black">{permission.name}</span>
-                  <span className="block text-slate-500">{permission.module} / {permission.code}</span>
-                </span>
-              </label>
+          <div className="space-y-3">
+            {permissionGroups.map((group) => (
+              <section key={group.category} className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-black text-ink">{group.category}</h3>
+                    <p className="mt-1 text-xs font-bold text-slate-500">{group.description}</p>
+                  </div>
+                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-600">
+                    {group.items.length} permissions
+                  </span>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {group.items.map((permission) => (
+                    <label key={permission.id ?? permission.code} className="flex min-h-24 items-start gap-3 rounded-lg bg-slate-50 p-3 text-sm transition hover:bg-lagoon/5">
+                      <input type="checkbox" checked={selectedPermissions.includes(permission.code)} onChange={() => togglePermission(permission.code)} className="mt-1" />
+                      <span className="min-w-0">
+                        <span className="block font-black text-ink">{permission.name}</span>
+                        <span className="mt-1 block break-words text-xs font-bold text-slate-500">{permission.code}</span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-600">{permissionDescription(permission, group.category)}</span>
+                        <span className="mt-2 inline-flex rounded-lg bg-white px-2 py-1 text-xs font-bold text-slate-500">{permissionModuleLabel(permission, group.category)}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         </Panel>
